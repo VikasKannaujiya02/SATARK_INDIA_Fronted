@@ -113,29 +113,31 @@ export function TabShield() {
       )}
 
       {!showSkeleton && (
-      <button className="relative flex items-center gap-3 p-5 rounded-3xl bg-gradient-to-r from-primary/20 via-primary/10 to-transparent border border-primary/40 hover:border-primary/60 transition-all active:scale-[0.97] shadow-lg shadow-primary/10 overflow-hidden group">
-        {/* Animated background gradient */}
-        <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-transparent to-primary/5 group-hover:from-primary/20 transition-all" />
-        <div className="absolute -top-12 -right-12 w-24 h-24 rounded-full bg-primary/20 blur-2xl group-hover:bg-primary/30 transition-all" />
-        
-        {/* Content */}
-        <div className="relative flex items-center gap-4 flex-1">
-          <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-primary/20 shrink-0 shadow-lg shadow-primary/10">
-            <Zap className={cn("text-primary drop-shadow-[0_0_10px_rgba(59,130,246,0.3)]", isElderly ? "w-7 h-7" : "w-6 h-6")} fill="currentColor" />
-          </div>
-          <div className="text-left">
-            <p className={cn("font-bold text-primary", isElderly ? "text-base" : "text-sm")}>
-              {t("Instant Quick Scan", "तत्काल त्वरित स्कैन")}
-            </p>
-            <p className={cn("text-foreground/70 mt-0.5", isElderly ? "text-xs" : "text-[11px]")}>
-              {t("Tap to scan for threats in 5 seconds", "5 सेकंड में खतरों के लिए स्कैन करने के लिए टैप करें")}
-            </p>
-          </div>
-        </div>
-        <ChevronRight className="relative w-5 h-5 text-primary/60 shrink-0" />
-      </button>
+        <>
+          {/* === QUICK SCAN PRIMARY WIDGET === */}
+          <button className="relative flex items-center gap-3 p-5 rounded-3xl bg-gradient-to-r from-primary/20 via-primary/10 to-transparent border border-primary/40 hover:border-primary/60 transition-all active:scale-[0.97] shadow-lg shadow-primary/10 overflow-hidden group">
+            {/* Animated background gradient */}
+            <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-transparent to-primary/5 group-hover:from-primary/20 transition-all" />
+            <div className="absolute -top-12 -right-12 w-24 h-24 rounded-full bg-primary/20 blur-2xl group-hover:bg-primary/30 transition-all" />
+            
+            {/* Content */}
+            <div className="relative flex items-center gap-4 flex-1">
+              <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-primary/20 shrink-0 shadow-lg shadow-primary/10">
+                <Zap className={cn("text-primary drop-shadow-[0_0_10px_rgba(59,130,246,0.3)]", isElderly ? "w-7 h-7" : "w-6 h-6")} fill="currentColor" />
+              </div>
+              <div className="text-left">
+                <p className={cn("font-bold text-primary", isElderly ? "text-base" : "text-sm")}>
+                  {t("Instant Quick Scan", "तत्काल त्वरित स्कैन")}
+                </p>
+                <p className={cn("text-foreground/70 mt-0.5", isElderly ? "text-xs" : "text-[11px]")}>
+                  {t("Tap to scan for threats in 5 seconds", "5 सेकंड में खतरों के लिए स्कैन करने के लिए टैप करें")}
+                </p>
+              </div>
+            </div>
+            <ChevronRight className="relative w-5 h-5 text-primary/60 shrink-0" />
+          </button>
 
-      {/* Delta DB Toast */}
+          {/* Delta DB Toast */}
       {showDbToast && (
         <div className="flex items-center gap-2 px-3 py-2.5 rounded-2xl bg-accent/10 border border-accent/20">
           <Database className="w-3.5 h-3.5 text-accent animate-pulse" />
@@ -286,7 +288,7 @@ export function TabShield() {
             <button onClick={() => setShowOtp(false)} className="text-muted-foreground hover:text-foreground">
               <X className="w-5 h-5" />
             </button>
-            <span className="text-[10px] font-mono text-muted-foreground">{t("VERIFY IDENTITY", "पहचान सत्यापित करें")}</span>
+            <span className="text-[10px] font-mono text-muted-foreground">{t("VERIFY IDENTITY", "पहचान सत्यापित ��रें")}</span>
             <div className="w-5" />
           </div>
 
@@ -381,6 +383,7 @@ export function TabShield() {
           </div>
         </div>
       )}
+        </>
       )}
 
       {/* Force Update Modal */}
