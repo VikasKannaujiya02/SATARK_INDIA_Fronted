@@ -9,6 +9,7 @@ import {
   EyeOff,
   Siren,
   Share2,
+  Activity,
 } from "lucide-react"
 import { useApp } from "./app-context"
 import { Switch } from "@/components/ui/switch"
@@ -50,6 +51,7 @@ export function TabRecovery() {
   const [panicPressed, setPanicPressed] = useState(false)
   const [panicCountdown, setPanicCountdown] = useState<number | null>(null)
   const [storyShared, setStoryShared] = useState(false)
+  const [holdingPanic, setHoldingPanic] = useState(false)
 
   const handlePanic = () => {
     if (panicPressed) return
@@ -68,49 +70,77 @@ export function TabRecovery() {
 
   return (
     <div className="flex flex-col gap-4 p-4 pb-6">
-      {/* Emergency Recovery Header */}
-      <div className="relative rounded-3xl bg-destructive/10 border border-destructive/30 p-5 overflow-hidden">
-        <div className="absolute top-0 left-0 right-0 h-1 bg-destructive/50" />
-        <div className="flex items-center gap-3 mb-2">
-          <Siren className={cn("text-destructive", isElderly ? "w-6 h-6" : "w-5 h-5")} />
-          <h2 className={cn("font-bold text-foreground", isElderly ? "text-xl" : "text-lg")}>
-            {t("Emergency Recovery", "आपातकालीन रिकवरी")}
-          </h2>
+      {/* EMERGENCY PANIC BUTTON - Massive, Pulsing, Red */}
+      <button
+        onMouseDown={() => {
+          setHoldingPanic(true)
+          setPanicPressed(true)
+          setPanicCountdown(5)
+        }}
+        onMouseUp={() => setHoldingPanic(false)}
+        onTouchStart={() => {
+          setHoldingPanic(true)
+          setPanicPressed(true)
+          setPanicCountdown(5)
+        }}
+        onTouchEnd={() => setHoldingPanic(false)}
+        className="relative w-full h-32 rounded-3xl bg-gradient-to-b from-destructive to-destructive/80 border-2 border-destructive/50 shadow-[0_0_40px_rgba(255,23,68,0.4)] hover:shadow-[0_0_60px_rgba(255,23,68,0.6)] transition-all active:scale-[0.98] flex flex-col items-center justify-center gap-2 overflow-hidden group"
+      >
+        {/* Pulsing background */}
+        <div className={cn("absolute inset-0 bg-destructive/20 rounded-3xl", holdingPanic && "animate-pulse")} />
+        
+        {/* Content */}
+        <div className="relative flex flex-col items-center justify-center">
+          <div className="flex items-center gap-2 mb-2">
+            <Siren className="w-8 h-8 text-white animate-bounce" fill="white" />
+            <span className="text-white font-black text-2xl">SOS</span>
+            <Siren className="w-8 h-8 text-white animate-bounce" fill="white" style={{ animationDelay: '0.2s' }} />
+          </div>
+          <p className="text-white font-bold text-sm">
+            {panicCountdown ? `${panicCountdown}s...` : t("TAP & HOLD", "TAP & HOLD")}
+          </p>
         </div>
-        <p className={cn("text-muted-foreground", isElderly ? "text-sm" : "text-xs")}>
-          {t(
-            "Immediate actions if you have been scammed. Every second matters.",
-            "अगर आपके साथ ठगी हुई है तो तत्काल कार्रवाई। हर सेकंड मायने रखता है।"
-          )}
-        </p>
+      </button>
+
+      {/* Trusted Contacts */}
+      <div>
+        <h3 className={cn("font-bold text-foreground px-1 mb-2", isElderly ? "text-base" : "text-sm")}>
+          {t("Trusted Contacts", "विश्वस्त संपर्क")}
+        </h3>
+        <div className="flex flex-col gap-2">
+          {[
+            { name: "Mom", phone: "+91 98765 43210", emoji: "👩" },
+            { name: "Dad", phone: "+91 98765 43211", emoji: "👨" },
+          ].map((contact, i) => (
+            <button
+              key={i}
+              className="flex items-center gap-3 p-4 rounded-2xl bg-white dark:bg-card border border-slate-100 dark:border-border hover:border-primary/40 transition-all active:scale-[0.97] shadow-[0_4px_20px_rgba(0,0,0,0.03)]"
+            >
+              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-accent/20 text-lg">
+                {contact.emoji}
+              </div>
+              <div className="flex-1 text-left">
+                <p className={cn("font-semibold text-foreground", isElderly ? "text-sm" : "text-xs")}>
+                  {contact.name}
+                </p>
+                <p className={cn("text-muted-foreground text-[10px]", isElderly ? "text-[11px]" : "text-[9px]")}>
+                  {contact.phone}
+                </p>
+              </div>
+              <button className="flex items-center justify-center w-10 h-10 rounded-full bg-accent/15 hover:bg-accent/25 transition-colors active:scale-[0.95]">
+                <Phone className="w-4.5 h-4.5 text-accent" />
+              </button>
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Massive Panic Button */}
-      <button
-        onClick={handlePanic}
-        className={cn(
-          "relative w-full flex flex-col items-center justify-center gap-2 py-8 rounded-3xl font-bold transition-all duration-300 overflow-hidden",
-          panicPressed
-            ? "bg-destructive/80 shadow-2xl shadow-destructive/40 scale-[0.98]"
-            : "bg-destructive hover:bg-destructive/90 shadow-xl shadow-destructive/30 active:scale-[0.97]"
-        )}
-      >
-        {panicPressed && (
-          <div className="absolute inset-0 bg-destructive animate-pulse" />
-        )}
-        <AlertTriangle className={cn("relative text-destructive-foreground", isElderly ? "w-10 h-10" : "w-8 h-8")} />
-        <span className={cn("relative text-destructive-foreground", isElderly ? "text-lg" : "text-base")}>
-          {panicPressed
-            ? panicCountdown && panicCountdown > 0
-              ? t(`ACTIVATING IN ${panicCountdown}...`, `${panicCountdown} में सक्रिय हो रहा है...`)
-              : t("RECOVERY MODE ACTIVE", "रिकवरी मोड सक्रिय")
-            : t("I GOT SCAMMED", "मुझे ठगा गया")}
+      {/* One-Tap Police 112 Button */}
+      <button className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl bg-destructive/10 border-2 border-destructive/30 hover:bg-destructive/15 transition-all active:scale-[0.97]">
+        <Phone className="w-5 h-5 text-destructive" />
+        <span className={cn("font-bold text-destructive", isElderly ? "text-base" : "text-sm")}>
+          {t("ONE-TAP POLICE (112)", "ONE-TAP पुलिस (112)")}
         </span>
-        {!panicPressed && (
-          <span className="relative text-destructive-foreground/70 text-[10px] font-mono">
-            {t("Tap to start emergency recovery", "आपातकालीन रिकवरी शुरू करने के लिए टैप करें")}
-          </span>
-        )}
       </button>
 
       {/* Recovery Actions Grid */}

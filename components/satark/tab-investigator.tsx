@@ -1,15 +1,21 @@
 "use client"
 
 import { useState } from "react"
-import { Search, Image, CreditCard, MapPin, ChevronRight, Zap, Tag, Clock } from "lucide-react"
+import { Search, Image, CreditCard, MapPin, ChevronRight, Zap, Tag, Clock, QrCode, TrendingUp } from "lucide-react"
 import { useApp } from "./app-context"
 import { cn } from "@/lib/utils"
 
 const recentSearches = [
-  { id: "1", value: "+91 87654 32109", tag: "Electricity Fraudster", tagHi: "बिजली धोखाधड़ी", risk: "high" as const, time: "2 min ago", timeHi: "2 मिनट पहले" },
+  { id: "1", value: "+91 98765 43210", tag: "Electricity Fraudster", tagHi: "बिजली धोखाधड़ी", risk: "high" as const, time: "2 min ago", timeHi: "2 मिनट पहले" },
   { id: "2", value: "fake-upi@scambank", tag: "Fake UPI Merchant", tagHi: "फर्जी UPI व्यापारी", risk: "high" as const, time: "18 min ago", timeHi: "18 मिनट पहले" },
   { id: "3", value: "bit.ly/free-gift-claim", tag: "Phishing Link", tagHi: "फिशिंग लिंक", risk: "medium" as const, time: "1 hr ago", timeHi: "1 घंटा पहले" },
   { id: "4", value: "+91 99012 34567", tag: "Loan App Scam", tagHi: "लोन ऐप स्कैम", risk: "high" as const, time: "3 hr ago", timeHi: "3 घंटे पहले" },
+]
+
+const trendingScams = [
+  { id: "1", titleEn: "Jamtara Electricity Scam", titleHi: "जमतारा बिजली स्कैम", descEn: "Fake bills demanding immediate payment", descHi: "तत्काल भुगतान की मांग करने वाले नकली बिल", victims: "2.4K", icon: Zap },
+  { id: "2", titleEn: "FedEx Courier Scam", titleHi: "FedEx कूरियर स्कैम", descEn: "Fake delivery notifications with UPI link", descHi: "UPI लिंक के साथ नकली डिलीवरी नोटिफिकेशन", victims: "1.8K", icon: Tag },
+  { id: "3", titleEn: "WhatsApp Banking Scam", titleHi: "WhatsApp बैंकिंग स्कैम", descEn: "Impersonating bank and stealing OTP", descHi: "बैंक का नकल करके OTP चोरी करना", victims: "3.2K", icon: TrendingUp },
 ]
 
 export function TabInvestigator() {
@@ -18,7 +24,7 @@ export function TabInvestigator() {
 
   return (
     <div className="flex flex-col gap-3 p-4 pb-6">
-      {/* Search Bar */}
+      {/* Search Bar with QR Scan */}
       <div className="relative">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-muted-foreground" />
         <input
@@ -27,13 +33,67 @@ export function TabInvestigator() {
           onChange={(e) => setSearchValue(e.target.value)}
           placeholder={t("Paste Number, UPI ID, or Link...", "नंबर, UPI ID, या लिंक पेस्ट करें...")}
           className={cn(
-            "w-full pl-11 pr-4 rounded-2xl bg-white dark:bg-card border border-slate-100 dark:border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary transition-colors shadow-[0_4px_20px_rgba(0,0,0,0.03)]",
+            "w-full pl-11 pr-12 rounded-2xl bg-white dark:bg-card border border-slate-100 dark:border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary transition-colors shadow-[0_4px_20px_rgba(0,0,0,0.03)]",
             isElderly ? "py-4 text-base" : "py-3 text-sm"
           )}
         />
+        <button className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 hover:bg-secondary rounded-lg transition-colors active:scale-[0.95]">
+          <QrCode className="w-5 h-5 text-primary" />
+        </button>
       </div>
 
-      {/* Tool Grid */}
+      {/* Recent Searches */}
+      <div>
+        <h3 className={cn("font-bold text-foreground px-1 mb-2", isElderly ? "text-base" : "text-sm")}>
+          {t("Recent Searches", "हाल की खोजें")}
+        </h3>
+        <div className="flex flex-wrap gap-2">
+          {recentSearches.slice(0, 2).map((search) => (
+            <button
+              key={search.id}
+              className="px-3 py-1.5 rounded-full bg-secondary border border-border text-muted-foreground text-[11px] font-medium hover:border-primary/40 transition-all active:scale-[0.95]"
+            >
+              {search.value}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Trending Scams in India */}
+      <div>
+        <div className="flex items-center gap-2 mb-3">
+          <TrendingUp className="w-4 h-4 text-destructive" />
+          <h3 className={cn("font-bold text-foreground", isElderly ? "text-base" : "text-sm")}>
+            {t("Trending Scams in India", "भारत में ट्रेंडिंग स्कैम")}
+          </h3>
+        </div>
+        <div className="flex flex-col gap-2">
+          {trendingScams.map((scam) => {
+            const IconComp = scam.icon
+            return (
+              <button
+                key={scam.id}
+                className="flex items-start gap-3 p-3.5 rounded-2xl bg-white dark:bg-card border border-slate-100 dark:border-border hover:border-destructive/40 transition-all active:scale-[0.97] shadow-[0_4px_20px_rgba(0,0,0,0.03)] text-left"
+              >
+                <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-destructive/15 shrink-0 mt-0.5">
+                  <IconComp className="w-4.5 h-4.5 text-destructive" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className={cn("font-semibold text-foreground", isElderly ? "text-sm" : "text-[13px]")}>
+                    {t(scam.titleEn, scam.titleHi)}
+                  </p>
+                  <p className={cn("text-muted-foreground mt-0.5 line-clamp-1", isElderly ? "text-xs" : "text-[10px]")}>
+                    {t(scam.descEn, scam.descHi)}
+                  </p>
+                  <p className={cn("text-destructive font-mono text-[9px] mt-1", isElderly ? "text-[10px]" : "text-[8px]")}>
+                    {scam.victims} victims reported
+                  </p>
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      </div>
       <div className="grid grid-cols-2 gap-2">
         <button className="flex items-center gap-3 p-3.5 rounded-2xl bg-white dark:bg-card border border-slate-100 dark:border-border hover:border-primary/30 transition-all active:scale-[0.97] shadow-[0_4px_20px_rgba(0,0,0,0.03)] text-left">
           <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-[#00B0FF]/15">

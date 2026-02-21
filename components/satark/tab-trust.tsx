@@ -20,6 +20,9 @@ import {
   Users,
   ArrowRight,
   Star,
+  MapPin,
+  AlertTriangle,
+  Power,
 } from "lucide-react"
 import { useApp } from "./app-context"
 import { Switch } from "@/components/ui/switch"
@@ -33,6 +36,44 @@ export function TabTrust() {
 
   return (
     <div className="flex flex-col gap-5 p-4 pb-6">
+      {/* USER PROFILE CARD - TOP */}
+      <div className="rounded-3xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 p-5 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
+        <div className="flex items-center gap-4 mb-4">
+          <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary/80 shadow-lg shadow-primary/20 text-white font-bold text-lg">
+            VK
+          </div>
+          <div className="flex-1">
+            <p className={cn("font-bold text-foreground", isElderly ? "text-lg" : "text-base")}>
+              Vikas Kannaujiya
+            </p>
+            <p className={cn("text-muted-foreground mt-1", isElderly ? "text-sm" : "text-xs")}>
+              +91 98765 43210
+            </p>
+            <div className="flex items-center gap-2 mt-2">
+              <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-accent/20 border border-accent/30">
+                <CheckCircle className="w-3.5 h-3.5 text-accent" fill="currentColor" />
+                <span className={cn("font-semibold text-accent", isElderly ? "text-xs" : "text-[10px]")}>
+                  KYC Verified
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+        {/* Profile Completion Progress */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className={cn("font-medium text-foreground text-[10px]", isElderly ? "text-xs" : "text-[9px]")}>
+              Profile Completion
+            </span>
+            <span className={cn("font-bold text-primary text-[10px]", isElderly ? "text-xs" : "text-[9px]")}>
+              80%
+            </span>
+          </div>
+          <div className="w-full h-1.5 rounded-full bg-secondary overflow-hidden">
+            <div className="h-full w-4/5 bg-gradient-to-r from-primary to-primary/80 rounded-full" />
+          </div>
+        </div>
+      </div>
       {/* Privacy Badge */}
       <div className="relative rounded-3xl overflow-hidden bg-white dark:bg-card/50 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
         <div className="absolute inset-0 bg-accent/10" />
@@ -203,6 +244,32 @@ export function TabTrust() {
         <p className="text-muted-foreground text-[9px] font-mono">
           {t("v1.0.4 (Build 420) • Made in India 🇮🇳", "v1.0.4 (बिल्ड 420) • भारत में बनाया गया 🇮🇳")}
         </p>
+      </div>
+
+      {/* 👑 ADMIN BOSS MODE - BOTTOM */}
+      <div className="rounded-2xl bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 p-5 shadow-[0_8px_32px_rgba(0,0,0,0.2)]">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-lg">👑</span>
+          <h3 className="font-bold text-white text-sm">ADMIN BOSS MODE</h3>
+        </div>
+        <div className="grid grid-cols-2 gap-3 mb-3">
+          <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700">
+            <p className="text-white/50 text-[9px] font-mono">Active Users</p>
+            <p className="text-white font-bold mt-1">24,592</p>
+          </div>
+          <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700">
+            <p className="text-white/50 text-[9px] font-mono">Threats Blocked</p>
+            <p className="text-accent font-bold mt-1">1,204</p>
+          </div>
+        </div>
+        <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg border border-slate-700">
+          <span className="text-white/70 text-xs font-mono">System Kill Switch</span>
+          <Switch 
+            checked={false}
+            aria-label="System kill switch"
+            className="data-[state=checked]:bg-destructive"
+          />
+        </div>
       </div>
     </div>
   )

@@ -16,6 +16,9 @@ import {
   Smartphone,
   Mail,
   Search,
+  FileCheck,
+  Globe,
+  Zap,
 } from "lucide-react"
 import { useApp } from "./app-context"
 import { cn } from "@/lib/utils"
@@ -110,16 +113,80 @@ export function TabOffense() {
 
   return (
     <div className="flex flex-col gap-4 p-4 pb-6">
+      {/* Cyber Defense Arsenal Header */}
       <div>
         <h2 className={cn("font-bold text-foreground", isElderly ? "text-xl" : "text-lg")}>
-          {t("Advanced Security Tools", "उन्नत सुरक्षा उपकरण")}
+          {t("Cyber Defense Arsenal", "साइबर रक्षा शस्त्रागार")}
         </h2>
         <p className={cn("text-muted-foreground mt-0.5", isElderly ? "text-sm" : "text-xs")}>
-          {t("Honeypot agents & threat monitoring", "हनीपॉट एजेंट्स और खतरे की निगरानी")}
+          {t("Advanced security tools at your fingertips", "आपकी उंगलियों पर उन्नत सुरक्षा उपकरण")}
         </p>
       </div>
 
-      {/* Device Health Audit Card */}
+      {/* Cyber Defense Arsenal 2x2 Grid */}
+      <div className="grid grid-cols-2 gap-3">
+        {/* Card 1: Deepfake Scanner */}
+        <button className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/30 dark:to-cyan-950/30 border border-blue-200 dark:border-blue-800 hover:border-blue-400 dark:hover:border-blue-600 transition-all active:scale-[0.97]">
+          <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/50">
+            <Smartphone className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+          </div>
+          <p className={cn("font-semibold text-foreground text-center", isElderly ? "text-sm" : "text-xs")}>
+            {t("Deepfake Scanner", "डीपफेक स्कैनर")}
+          </p>
+          <p className={cn("text-muted-foreground text-[9px] text-center", isElderly ? "text-[10px]" : "text-[8px]")}>
+            {t("Audio/Video", "ऑडियो/वीडियो")}
+          </p>
+        </button>
+
+        {/* Card 2: AI Honeypot */}
+        <button className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 border border-purple-200 dark:border-purple-800 hover:border-purple-400 dark:hover:border-purple-600 transition-all active:scale-[0.97]">
+          <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-purple-100 dark:bg-purple-900/50">
+            <Bot className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+          </div>
+          <p className={cn("font-semibold text-foreground text-center", isElderly ? "text-sm" : "text-xs")}>
+            {t("AI Honeypot", "AI हनीपॉट")}
+          </p>
+          <p className={cn("text-muted-foreground text-[9px] text-center", isElderly ? "text-[10px]" : "text-[8px]")}>
+            {t("Keep scammers busy", "स्कैमर्स को व्यस्त रखें")}
+          </p>
+        </button>
+
+        {/* Card 3: Fake Receipt Verifier */}
+        <button className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950/30 dark:to-amber-950/30 border border-orange-200 dark:border-orange-800 hover:border-orange-400 dark:hover:border-orange-600 transition-all active:scale-[0.97]">
+          <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-orange-100 dark:bg-orange-900/50">
+            <FileCheck className="w-6 h-6 text-orange-600 dark:text-orange-400" />
+          </div>
+          <p className={cn("font-semibold text-foreground text-center", isElderly ? "text-sm" : "text-xs")}>
+            {t("Receipt Verifier", "रसीद सत्यापक")}
+          </p>
+          <p className={cn("text-muted-foreground text-[9px] text-center", isElderly ? "text-[10px]" : "text-[8px]")}>
+            {t("Detect fakes", "नकली का पता लगाएं")}
+          </p>
+        </button>
+
+        {/* Card 4: Dark Web Leak Check */}
+        <button className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-gradient-to-br from-red-50 to-rose-50 dark:from-red-950/30 dark:to-rose-950/30 border border-red-200 dark:border-red-800 hover:border-red-400 dark:hover:border-red-600 transition-all active:scale-[0.97]">
+          <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-red-100 dark:bg-red-900/50">
+            <Globe className="w-6 h-6 text-red-600 dark:text-red-400" />
+          </div>
+          <p className={cn("font-semibold text-foreground text-center", isElderly ? "text-sm" : "text-xs")}>
+            {t("Dark Web Check", "डार्क वेब जांच")}
+          </p>
+          <p className={cn("text-muted-foreground text-[9px] text-center", isElderly ? "text-[10px]" : "text-[8px]")}>
+            {t("Find leaks", "लीक खोजें")}
+          </p>
+        </button>
+      </div>
+
+      {/* Honeypot Agents Section */}
+      <div>
+        <h3 className={cn("font-bold text-foreground", isElderly ? "text-base" : "text-sm")}>
+          {t("Active Honeypot Agents", "सक्रिय हनीपॉट एजेंट्स")}
+        </h3>
+        <p className={cn("text-muted-foreground mt-0.5", isElderly ? "text-xs" : "text-[10px]")}>
+          {t("Live AI agents wasting scammers' time", "स्कैमर्स का समय बर्बाद करते AI एजेंट्स")}
+        </p>
+      </div>
       <div className="rounded-3xl bg-white dark:bg-card border border-slate-100 dark:border-border shadow-[0_4px_20px_rgba(0,0,0,0.03)] overflow-hidden">
         <div className="p-5 flex items-center gap-3 mb-3">
           <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-primary/15">
@@ -322,7 +389,7 @@ export function TabOffense() {
                     <div className="px-2.5 py-1.5 rounded-xl rounded-tl-sm bg-secondary text-[10px] text-foreground max-w-[80%]">
                       {t(
                         '"Hello sir, I am calling from electricity board..."',
-                        '"नमस्ते सर, ���ैं बिजली बोर्ड से कॉल कर रहा हूं..."'
+                        '"नमस्ते सर, ���ैं बिजल�� बोर्ड से कॉल कर रहा हूं..."'
                       )}
                     </div>
                   </div>
