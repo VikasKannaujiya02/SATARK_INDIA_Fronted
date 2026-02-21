@@ -147,7 +147,7 @@ export function TabTrust() {
           {t("STORAGE", "स्टोरेज")}
         </h3>
 
-        <button className="flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-card border border-slate-100 dark:border-border hover:border-primary/40 transition-all active:scale-[0.97] shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
+        <div className="flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-card border border-slate-100 dark:border-border hover:border-primary/40 transition-all shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
           <div className="flex items-center gap-3">
             <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-secondary shrink-0">
               <HardDrive className={cn("text-muted-foreground", isElderly ? "w-5 h-5" : "w-4 h-4")} />
@@ -167,13 +167,13 @@ export function TabTrust() {
               setTimeout(() => setCacheCleared(false), 2000)
             }}
             className={cn(
-              "text-accent text-[9px] font-mono font-bold px-2 py-1 rounded-md transition-colors",
+              "text-accent text-[9px] font-mono font-bold px-2 py-1 rounded-md transition-colors active:scale-[0.95]",
               cacheCleared && "text-accent/50"
             )}
           >
             {cacheCleared ? t("CLEARED", "साफ") : t("Clear Cache", "कैश साफ करें")}
           </button>
-        </button>
+        </div>
       </div>
 
       {/* Privacy Screen Toggle */}
