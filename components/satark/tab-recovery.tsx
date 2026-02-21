@@ -115,7 +115,11 @@ export function TabRecovery() {
             <div
               key={i}
               className="flex items-center gap-3 p-4 rounded-2xl bg-white dark:bg-card border border-slate-100 dark:border-border hover:border-primary/40 transition-all active:scale-[0.97] shadow-[0_4px_20px_rgba(0,0,0,0.03)] cursor-pointer"
-              onClick={() => window.location.href = `tel:${contact.phone}`}
+              onClick={() => {
+                // Initiate phone call
+                const tel = `tel:${contact.phone}`;
+                window.location.href = tel;
+              }}
             >
               <div className="flex items-center justify-center w-12 h-12 rounded-full bg-accent/20 text-lg">
                 {contact.emoji}
@@ -130,10 +134,7 @@ export function TabRecovery() {
               </div>
               <div 
                 className="flex items-center justify-center w-10 h-10 rounded-full bg-accent/15 hover:bg-accent/25 transition-colors active:scale-[0.95]"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  window.location.href = `tel:${contact.phone}`
-                }}
+                role="presentation"
               >
                 <Phone className="w-4.5 h-4.5 text-accent" />
               </div>
