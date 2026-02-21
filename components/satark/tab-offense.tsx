@@ -120,7 +120,7 @@ export function TabOffense() {
       </div>
 
       {/* Device Health Audit Card */}
-      <div className="rounded-3xl bg-card border border-border overflow-hidden">
+      <div className="rounded-3xl bg-white dark:bg-card border border-slate-100 dark:border-border shadow-[0_4px_20px_rgba(0,0,0,0.03)] overflow-hidden">
         <div className="p-5 flex items-center gap-3 mb-3">
           <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-primary/15">
             <Smartphone className="w-5 h-5 text-primary" />
@@ -135,7 +135,7 @@ export function TabOffense() {
           </div>
         </div>
 
-        <div className="flex flex-col divide-y divide-border">
+        <div className="flex flex-col divide-y divide-slate-100 dark:divide-border">
           <div className="flex items-center gap-3 px-5 py-3">
             <CheckCircle2 className="w-4 h-4 text-accent" />
             <span className={cn("flex-1 text-foreground", isElderly ? "text-sm" : "text-xs")}>
@@ -168,7 +168,7 @@ export function TabOffense() {
       </div>
 
       {/* Dark Web Monitor Card */}
-      <div className="rounded-3xl bg-card border border-border overflow-hidden">
+      <div className="rounded-3xl bg-white dark:bg-card border border-slate-100 dark:border-border shadow-[0_4px_20px_rgba(0,0,0,0.03)] overflow-hidden">
         <div className="p-5 flex items-center gap-3 mb-3">
           <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-chart-4/15">
             <Search className="w-5 h-5 text-[#00B0FF]" />
@@ -348,7 +348,7 @@ export function TabOffense() {
                 )}
               >
                 {agent.active
-                  ? t("Deactivate Agent", "एजेंट निष्क्रिय करें")
+                  ? t("Deactivate Agent", "एजे���ट निष्क्रिय करें")
                   : t("Activate Agent", "एजेंट सक्रिय करें")}
               </button>
             </div>

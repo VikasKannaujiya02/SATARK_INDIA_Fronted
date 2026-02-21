@@ -16,6 +16,9 @@ export function TabShield() {
   const [upiBreaker, setUpiBreaker] = useState(false)
   const [freezeTimer, setFreezeTimer] = useState(0)
   const [shieldPulse, setShieldPulse] = useState(true)
+  const [pullRefresh, setPullRefresh] = useState(false)
+  const [toastMessage, setToastMessage] = useState("")
+  const [showSkeleton, setShowSkeleton] = useState(false)
 
   // Overlays
   const [showSplash, setShowSplash] = useState(false)
@@ -73,9 +76,43 @@ export function TabShield() {
     setTimeout(() => { setShowSplash(false); setShowOtp(true); setOtpTimer(30) }, 2500)
   }
 
+  const handlePullRefresh = () => {
+    setPullRefresh(true)
+    setShowSkeleton(true)
+    setTimeout(() => {
+      setShowSkeleton(false)
+      setToastMessage(t("Data refreshed successfully", "डेटा सफलतापूर्वक रीफ्रेश हुआ"))
+      setTimeout(() => setToastMessage(""), 2500)
+    }, 2000)
+    setTimeout(() => setPullRefresh(false), 1000)
+  }
+
   return (
     <div className="flex flex-col gap-3 p-4 pb-6 relative">
-      {/* === QUICK SCAN PRIMARY WIDGET === */}
+      {/* Pull-to-Refresh Indicator */}
+      <div className={cn(
+        "flex items-center justify-center h-8 text-accent transition-all duration-300 opacity-0",
+        pullRefresh && "opacity-100"
+      )}>
+        <div className="w-5 h-5 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+      </div>
+
+      {/* Skeleton Loading Placeholder */}
+      {showSkeleton && (
+        <div className="flex flex-col gap-3">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="flex gap-3 p-4 rounded-2xl bg-white dark:bg-card/50 border border-slate-100 dark:border-border/30">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-r from-slate-200 to-slate-100 dark:from-slate-700 dark:to-slate-800 animate-pulse" />
+              <div className="flex-1 space-y-2">
+                <div className="h-3 rounded bg-gradient-to-r from-slate-200 to-slate-100 dark:from-slate-700 dark:to-slate-800 animate-pulse w-3/4" />
+                <div className="h-2 rounded bg-gradient-to-r from-slate-200 to-slate-100 dark:from-slate-700 dark:to-slate-800 animate-pulse w-1/2" />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!showSkeleton && (
       <button className="relative flex items-center gap-3 p-5 rounded-3xl bg-gradient-to-r from-primary/20 via-primary/10 to-transparent border border-primary/40 hover:border-primary/60 transition-all active:scale-[0.97] shadow-lg shadow-primary/10 overflow-hidden group">
         {/* Animated background gradient */}
         <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-transparent to-primary/5 group-hover:from-primary/20 transition-all" />
@@ -112,7 +149,7 @@ export function TabShield() {
       )}
 
       {/* Shield Status Card */}
-      <div className="relative flex flex-col items-center gap-2 py-6 rounded-3xl bg-card border border-border overflow-hidden">
+      <div className="relative flex flex-col items-center gap-2 py-6 rounded-3xl bg-white dark:bg-card border border-slate-100 dark:border-border shadow-[0_4px_20px_rgba(0,0,0,0.03)] overflow-hidden">
         <div className={cn("absolute inset-0 transition-opacity duration-1000", shieldPulse ? "opacity-15" : "opacity-5")}
           style={{ background: "radial-gradient(circle at 50% 30%, #00E676 0%, transparent 70%)" }} />
         <div className="relative">
@@ -134,24 +171,24 @@ export function TabShield() {
       {/* Demo Buttons Row */}
       <div className="grid grid-cols-2 gap-2">
         <button onClick={startSplashFlow}
-          className="flex items-center gap-2 p-3 rounded-2xl bg-secondary border border-border hover:bg-secondary/70 transition-all active:scale-[0.97]">
+          className="flex items-center gap-2 p-3 rounded-2xl bg-white dark:bg-secondary border border-slate-200 dark:border-border hover:bg-slate-50 dark:hover:bg-secondary/70 transition-all active:scale-[0.97]">
           <Smartphone className="w-4 h-4 text-primary" />
           <span className={cn("font-semibold text-foreground", isElderly ? "text-xs" : "text-[11px]")}>
             {t("Splash + OTP", "स्प्लैश + OTP")}
           </span>
         </button>
         <button onClick={() => setShowPermissions(true)}
-          className="flex items-center gap-2 p-3 rounded-2xl bg-secondary border border-border hover:bg-secondary/70 transition-all active:scale-[0.97]">
+          className="flex items-center gap-2 p-3 rounded-2xl bg-white dark:bg-secondary border border-slate-200 dark:border-border hover:bg-slate-50 dark:hover:bg-secondary/70 transition-all active:scale-[0.97]">
           <Lock className="w-4 h-4 text-primary" />
           <span className={cn("font-semibold text-foreground", isElderly ? "text-xs" : "text-[11px]")}>
             {t("Permissions", "अनुमतियां")}
           </span>
         </button>
-        <button onClick={() => setShowForceUpdate(true)}
-          className="flex items-center gap-2 p-3 rounded-2xl bg-secondary border border-border hover:bg-secondary/70 transition-all active:scale-[0.97]">
-          <Zap className="w-4 h-4 text-primary" />
+        <button onClick={handlePullRefresh}
+          className="flex items-center gap-2 p-3 rounded-2xl bg-white dark:bg-secondary border border-slate-200 dark:border-border hover:bg-slate-50 dark:hover:bg-secondary/70 transition-all active:scale-[0.97]">
+          <MessageSquare className="w-4 h-4 text-primary" />
           <span className={cn("font-semibold text-foreground", isElderly ? "text-xs" : "text-[11px]")}>
-            {t("Force Update", "फोर्स अपडेट")}
+            {t("Refresh", "रीफ्रेश")}
           </span>
         </button>
         <button onClick={() => setShowScamOverlay(true)}
@@ -164,7 +201,7 @@ export function TabShield() {
       </div>
 
       {/* Live Protection Toggles - iOS Settings Style */}
-      <div className="rounded-2xl bg-card border border-border overflow-hidden divide-y divide-border">
+      <div className="rounded-2xl bg-white dark:bg-card border border-slate-100 dark:border-border shadow-[0_4px_20px_rgba(0,0,0,0.03)] overflow-hidden divide-y divide-slate-100 dark:divide-border">
         {/* Call Monitor */}
         <div className="flex items-center gap-3 px-4 py-3">
           <div className={cn("flex items-center justify-center w-8 h-8 rounded-lg", callMonitor ? "bg-accent/15" : "bg-secondary")}>
@@ -344,6 +381,7 @@ export function TabShield() {
           </div>
         </div>
       )}
+      )}
 
       {/* Force Update Modal */}
       {showForceUpdate && (
@@ -369,6 +407,14 @@ export function TabShield() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-40 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2.5 rounded-full bg-foreground text-foreground-foreground shadow-lg z-50 animate-in fade-in zoom-in-95 duration-300">
+          <CheckCircle className="w-4 h-4" />
+          <span className="text-sm font-medium">{toastMessage}</span>
         </div>
       )}
 
@@ -403,7 +449,7 @@ export function TabShield() {
               </div>
               <p className="text-white/60 text-[10px] mt-2">
                 {scamFreezeTimer > 0
-                  ? t("All UPI apps are temporarily frozen", "सभी UPI ऐप्स अस्थायी रूप से फ्रोजन हैं")
+                  ? t("All UPI apps are temporarily frozen", "सभी UPI ऐप्स अस्���ायी रूप से फ्रोजन हैं")
                   : t("UPI apps unlocked", "UPI ऐप्स अनलॉक")}
               </p>
             </div>

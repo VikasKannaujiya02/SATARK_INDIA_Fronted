@@ -27,7 +27,7 @@ export function TabInvestigator() {
           onChange={(e) => setSearchValue(e.target.value)}
           placeholder={t("Paste Number, UPI ID, or Link...", "नंबर, UPI ID, या लिंक पेस्ट करें...")}
           className={cn(
-            "w-full pl-11 pr-4 rounded-2xl bg-card border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary transition-colors",
+            "w-full pl-11 pr-4 rounded-2xl bg-white dark:bg-card border border-slate-100 dark:border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary transition-colors shadow-[0_4px_20px_rgba(0,0,0,0.03)]",
             isElderly ? "py-4 text-base" : "py-3 text-sm"
           )}
         />
@@ -35,7 +35,7 @@ export function TabInvestigator() {
 
       {/* Tool Grid */}
       <div className="grid grid-cols-2 gap-2">
-        <button className="flex items-center gap-3 p-3.5 rounded-2xl bg-card border border-border hover:border-primary/30 transition-all active:scale-[0.97] text-left">
+        <button className="flex items-center gap-3 p-3.5 rounded-2xl bg-white dark:bg-card border border-slate-100 dark:border-border hover:border-primary/30 transition-all active:scale-[0.97] shadow-[0_4px_20px_rgba(0,0,0,0.03)] text-left">
           <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-[#00B0FF]/15">
             <Image className="w-4.5 h-4.5 text-[#00B0FF]" />
           </div>
@@ -46,7 +46,7 @@ export function TabInvestigator() {
             <p className="text-muted-foreground text-[10px] mt-0.5">{t("Analyze", "विश्लेषण")}</p>
           </div>
         </button>
-        <button className="flex items-center gap-3 p-3.5 rounded-2xl bg-card border border-border hover:border-primary/30 transition-all active:scale-[0.97] text-left">
+        <button className="flex items-center gap-3 p-3.5 rounded-2xl bg-white dark:bg-card border border-slate-100 dark:border-border hover:border-primary/30 transition-all active:scale-[0.97] shadow-[0_4px_20px_rgba(0,0,0,0.03)] text-left">
           <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-accent/15">
             <CreditCard className="w-4.5 h-4.5 text-accent" />
           </div>
@@ -60,7 +60,7 @@ export function TabInvestigator() {
       </div>
 
       {/* Fraud Map */}
-      <div className="rounded-2xl bg-card border border-border overflow-hidden">
+      <div className="rounded-2xl bg-white dark:bg-card border border-slate-100 dark:border-border shadow-[0_4px_20px_rgba(0,0,0,0.03)] overflow-hidden">
         <div className="flex items-center justify-between px-4 pt-3 pb-2">
           <div className="flex items-center gap-2">
             <MapPin className="w-4 h-4 text-destructive" />
@@ -97,7 +97,7 @@ export function TabInvestigator() {
           </h3>
           <span className="text-muted-foreground text-[10px] font-mono">{t("Recent", "हाल")}</span>
         </div>
-        <div className="rounded-2xl bg-card border border-border overflow-hidden divide-y divide-border">
+        <div className="rounded-2xl bg-white dark:bg-card border border-slate-100 dark:border-border shadow-[0_4px_20px_rgba(0,0,0,0.03)] overflow-hidden divide-y divide-slate-100 dark:divide-border">
           {recentSearches.map((item) => (
             <button key={item.id} className="flex items-center gap-3 px-4 py-3 hover:bg-secondary/30 transition-colors text-left w-full">
               <div className={cn("flex items-center justify-center w-8 h-8 rounded-lg shrink-0",

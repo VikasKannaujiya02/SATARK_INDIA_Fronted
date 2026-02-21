@@ -123,7 +123,7 @@ export function TabRecovery() {
           return (
             <button
               key={action.titleEn}
-              className="flex items-center gap-3.5 p-4 rounded-2xl bg-card border border-border hover:border-primary/40 transition-all active:scale-[0.98] text-left"
+              className="flex items-center gap-3.5 p-4 rounded-2xl bg-white dark:bg-card border border-slate-100 dark:border-border hover:border-primary/40 transition-all active:scale-[0.97] shadow-[0_4px_20px_rgba(0,0,0,0.03)] text-left"
             >
               <div className={cn("flex items-center justify-center w-11 h-11 rounded-xl shrink-0", action.color)}>
                 <Icon className={cn(action.iconColor, isElderly ? "w-5 h-5" : "w-4.5 h-4.5")} />
@@ -171,7 +171,7 @@ export function TabRecovery() {
       </button>
 
       {/* Anonymous Reporting Toggle */}
-      <div className="flex items-center justify-between p-4 rounded-2xl bg-card border border-border">
+      <div className="flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-card border border-slate-100 dark:border-border shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
         <div className="flex items-center gap-3">
           <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/15">
             <EyeOff className={cn("text-primary", isElderly ? "w-5 h-5" : "w-4 h-4")} />

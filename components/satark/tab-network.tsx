@@ -61,7 +61,7 @@ export function TabNetwork() {
       </div>
 
       {/* Voice SOS Toggle */}
-      <div className="flex items-center justify-between p-4 rounded-2xl bg-card border border-border">
+      <div className="flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-card border border-slate-100 dark:border-border shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
         <div className="flex items-center gap-3">
           <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-destructive/15 shrink-0">
             <Mic className={cn("text-destructive", isElderly ? "w-5 h-5" : "w-4 h-4")} />
@@ -82,10 +82,10 @@ export function TabNetwork() {
       <button
         onClick={() => setWhatsappConnected(!whatsappConnected)}
         className={cn(
-          "flex items-center justify-between p-4 rounded-2xl border transition-all active:scale-[0.98]",
+          "flex items-center justify-between p-4 rounded-2xl border transition-all active:scale-[0.97]",
           whatsappConnected
             ? "bg-[#25D366]/10 border-[#25D366]/30"
-            : "bg-card border-border hover:border-[#25D366]/50"
+            : "bg-white dark:bg-card border-slate-100 dark:border-border hover:border-[#25D366]/50 shadow-[0_4px_20px_rgba(0,0,0,0.03)]"
         )}
       >
         <div className="flex items-center gap-3">

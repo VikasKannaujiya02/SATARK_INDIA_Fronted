@@ -19,6 +19,7 @@ import {
   Gift,
   Users,
   ArrowRight,
+  Star,
 } from "lucide-react"
 import { useApp } from "./app-context"
 import { Switch } from "@/components/ui/switch"
@@ -28,11 +29,12 @@ export function TabTrust() {
   const { t, isElderly, isDark, toggleDark } = useApp()
   const [privacyScreen, setPrivacyScreen] = useState(false)
   const [cacheCleared, setCacheCleared] = useState(false)
+  const [rateClicked, setRateClicked] = useState(false)
 
   return (
     <div className="flex flex-col gap-5 p-4 pb-6">
       {/* Privacy Badge */}
-      <div className="relative rounded-3xl overflow-hidden">
+      <div className="relative rounded-3xl overflow-hidden bg-white dark:bg-card/50 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
         <div className="absolute inset-0 bg-accent/10" />
         <div className="absolute top-0 left-0 right-0 h-1 bg-accent" />
         <div className="relative flex items-center gap-4 p-5">
@@ -49,78 +51,38 @@ export function TabTrust() {
                 "100% ऑन-डिवाइस प्राइवेसी। आपका डेटा कभी फोन नहीं छोड़ता।"
               )}
             </p>
-            <div className="flex items-center gap-1.5 mt-2">
-              <CheckCircle className="w-3 h-3 text-accent" />
-              <span className="text-accent text-[9px] font-mono font-bold">
-                {t("VERIFIED ZERO-KNOWLEDGE", "सत्यापित ज़ीरो-नॉलेज")}
-              </span>
-            </div>
           </div>
         </div>
       </div>
 
-      {/* Settings Section */}
-      <div className="flex flex-col gap-1.5">
-        <h3 className={cn("font-bold text-muted-foreground uppercase tracking-wider px-1 mb-1", isElderly ? "text-xs" : "text-[10px]")}>
-          {t("SETTINGS", "सेटिंग्स")}
-        </h3>
-
-        <div className="flex flex-col rounded-2xl bg-card border border-border overflow-hidden divide-y divide-border">
-          {/* OTP Login */}
-          <div className="flex items-center gap-3 px-4 py-3.5">
-            <KeyRound className={cn("text-muted-foreground shrink-0", isElderly ? "w-4.5 h-4.5" : "w-4 h-4")} />
-            <div className="flex-1">
-              <p className={cn("font-medium text-foreground", isElderly ? "text-sm" : "text-xs")}>
-                {t("OTP Login", "OTP लॉगिन")}
-              </p>
-              <p className={cn("text-muted-foreground", isElderly ? "text-[11px]" : "text-[9px]")}>
-                {t("Phone: +91 98765 43210", "फोन: +91 98765 43210")}
-              </p>
-            </div>
-            <span className="text-accent text-[9px] font-mono font-bold bg-accent/10 px-2 py-0.5 rounded-md">
-              {t("VERIFIED", "सत्यापित")}
-            </span>
-          </div>
-
-          {/* Dark Mode Toggle */}
-          <div className="flex items-center gap-3 px-4 py-3.5">
-            {isDark ? (
-              <Moon className={cn("text-muted-foreground shrink-0", isElderly ? "w-4.5 h-4.5" : "w-4 h-4")} />
-            ) : (
-              <Sun className={cn("text-muted-foreground shrink-0", isElderly ? "w-4.5 h-4.5" : "w-4 h-4")} />
-            )}
-            <div className="flex-1">
-              <p className={cn("font-medium text-foreground", isElderly ? "text-sm" : "text-xs")}>
-                {t("Dark Mode UI", "डार्क मोड UI")}
-              </p>
-              <p className={cn("text-muted-foreground", isElderly ? "text-[11px]" : "text-[9px]")}>
-                {isDark ? t("Currently dark theme", "वर्तमान में डार्क थीम") : t("Currently light theme", "वर्तमान में लाइट थीम")}
-              </p>
-            </div>
-            <Switch checked={isDark} onCheckedChange={toggleDark} aria-label={t("Toggle dark mode", "डार्क मोड टॉगल करें")} />
-          </div>
-
-          {/* Offline DB Sync */}
-          <div className="flex items-center gap-3 px-4 py-3.5">
-            <Database className={cn("text-muted-foreground shrink-0", isElderly ? "w-4.5 h-4.5" : "w-4 h-4")} />
-            <div className="flex-1">
-              <p className={cn("font-medium text-foreground", isElderly ? "text-sm" : "text-xs")}>
-                {t("Offline Database Sync", "ऑफलाइन डेटाबेस सिंक")}
-              </p>
-              <p className={cn("text-muted-foreground", isElderly ? "text-[11px]" : "text-[9px]")}>
-                {t("Last synced: 2 min ago (Delta: 10KB)", "अंतिम सिंक: 2 मिनट पहले (डेल्टा: 10KB)")}
-              </p>
-            </div>
-            <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-accent/10">
-              <Wifi className="w-2.5 h-2.5 text-accent" />
-              <span className="text-accent text-[8px] font-mono font-bold">{t("SYNCED", "सिंक्ड")}</span>
-            </div>
-          </div>
+      {/* Rate Us Card */}
+      <button
+        onClick={() => setRateClicked(true)}
+        className={cn(
+          "flex items-center gap-4 p-5 rounded-2xl border transition-all active:scale-[0.97]",
+          rateClicked
+            ? "bg-primary/15 border-primary/40"
+            : "bg-gradient-to-br from-amber-50 to-orange-50 dark:from-primary/10 dark:to-primary/5 border-amber-200 dark:border-primary/30 hover:border-amber-300 dark:hover:border-primary/50"
+        )}
+      >
+        <div className={cn("flex items-center justify-center w-12 h-12 rounded-2xl shrink-0", rateClicked ? "bg-primary/20" : "bg-white dark:bg-card/50 shadow-md shadow-amber-200/50 dark:shadow-primary/10")}>
+          <Star className={cn(rateClicked ? "text-primary" : "text-amber-500", isElderly ? "w-6 h-6" : "w-5 h-5")} fill="currentColor" />
         </div>
-      </div>
+        <div className="flex-1 text-left">
+          <p className={cn("font-bold text-foreground", isElderly ? "text-base" : "text-sm")}>
+            {rateClicked ? t("Thank you!", "धन्यवाद!") : t("Enjoying Satark India?", "सतर्क इंडिया पसंद आ रहा है?")}
+          </p>
+          <p className={cn("text-muted-foreground mt-0.5", isElderly ? "text-xs" : "text-[10px]")}>
+            {rateClicked
+              ? t("Your feedback helps us improve", "आपकी प्रतिक्रिया हमें बेहतर होने में मदद करती है")
+              : t("Rate us 5 stars on Play Store", "Play Store पर हमें 5 स्टार दें")}
+          </p>
+        </div>
+        <Star className={cn("w-5 h-5 shrink-0", rateClicked ? "text-primary" : "text-amber-400")} fill="currentColor" />
+      </button>
 
       {/* Invite & Earn Gamification Banner */}
-      <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-primary/30 via-primary/20 to-transparent border border-primary/30 p-5">
+      <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-primary/20 via-primary/10 to-transparent border border-primary/30 p-5 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
         <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full bg-primary/20 blur-2xl" />
         <div className="relative flex items-center gap-4">
           <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-primary/30 shrink-0 shadow-lg shadow-primary/10">
@@ -144,7 +106,7 @@ export function TabTrust() {
           {t("STORAGE", "स्टोरेज")}
         </h3>
 
-        <button className="flex items-center justify-between p-4 rounded-2xl bg-card border border-border hover:border-primary/40 transition-all active:scale-[0.98]">
+        <button className="flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-card border border-slate-100 dark:border-border hover:border-primary/40 transition-all active:scale-[0.97] shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
           <div className="flex items-center gap-3">
             <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-secondary shrink-0">
               <HardDrive className={cn("text-muted-foreground", isElderly ? "w-5 h-5" : "w-4 h-4")} />
@@ -174,7 +136,7 @@ export function TabTrust() {
       </div>
 
       {/* Privacy Screen Toggle */}
-      <div className="flex items-center justify-between p-4 rounded-2xl bg-card border border-border">
+      <div className="flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-card border border-slate-100 dark:border-border shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
         <div className="flex items-center gap-3">
           <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-secondary shrink-0">
             <Eye className={cn("text-muted-foreground", isElderly ? "w-5 h-5" : "w-4 h-4")} />
@@ -197,7 +159,7 @@ export function TabTrust() {
           {t("LEGAL", "कानूनी")}
         </h3>
 
-        <div className="flex flex-col rounded-2xl bg-card border border-border overflow-hidden divide-y divide-border">
+        <div className="flex flex-col rounded-2xl bg-white dark:bg-card border border-slate-100 dark:border-border overflow-hidden divide-y divide-slate-100 dark:divide-border shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
           {[
             { icon: FileText, titleEn: "Privacy Policy", titleHi: "गोपनीयता नीति" },
             { icon: ScrollText, titleEn: "Data Safety Form", titleHi: "डेटा सुरक्षा फॉर्म" },
@@ -207,7 +169,7 @@ export function TabTrust() {
             return (
               <button
                 key={item.titleEn}
-                className="flex items-center gap-3 px-4 py-3.5 hover:bg-secondary/50 transition-colors text-left"
+                className="flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 dark:hover:bg-secondary/50 transition-colors text-left active:scale-[0.97]"
               >
                 <Icon className={cn("text-muted-foreground shrink-0", isElderly ? "w-4.5 h-4.5" : "w-4 h-4")} />
                 <span className={cn("flex-1 font-medium text-foreground", isElderly ? "text-sm" : "text-xs")}>
@@ -221,7 +183,7 @@ export function TabTrust() {
       </div>
 
       {/* Danger: Delete Account */}
-      <button className="flex items-center gap-3 p-4 rounded-2xl bg-destructive/10 border border-destructive/20 hover:bg-destructive/15 transition-colors text-left active:scale-[0.98]">
+      <button className="flex items-center gap-3 p-4 rounded-2xl bg-destructive/10 border border-destructive/20 hover:bg-destructive/15 transition-colors text-left active:scale-[0.97]">
         <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-destructive/15 shrink-0">
           <Trash2 className={cn("text-destructive", isElderly ? "w-5 h-5" : "w-4 h-4")} />
         </div>

@@ -4,7 +4,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: #F0F4F8;
+  --background: #F9FAFB;
   --foreground: #0A1628;
   --card: #FFFFFF;
   --card-foreground: #0A1628;
@@ -12,7 +12,7 @@
   --popover-foreground: #0A1628;
   --primary: #1E3A5F;
   --primary-foreground: #FFFFFF;
-  --secondary: #E8EEF4;
+  --secondary: #F3F6FB;
   --secondary-foreground: #1E3A5F;
   --muted: #E8EEF4;
   --muted-foreground: #5A6B7F;
@@ -20,8 +20,8 @@
   --accent-foreground: #0A1628;
   --destructive: #FF1744;
   --destructive-foreground: #FFFFFF;
-  --border: #D0DAE4;
-  --input: #D0DAE4;
+  --border: #E5E9F1;
+  --input: #E5E9F1;
   --ring: #1E3A5F;
   --chart-1: #1E3A5F;
   --chart-2: #00E676;
@@ -33,9 +33,9 @@
   --sidebar-foreground: #0A1628;
   --sidebar-primary: #1E3A5F;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #E8EEF4;
+  --sidebar-accent: #F3F6FB;
   --sidebar-accent-foreground: #1E3A5F;
-  --sidebar-border: #D0DAE4;
+  --sidebar-border: #E5E9F1;
   --sidebar-ring: #1E3A5F;
 }
 
@@ -130,5 +130,22 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+
+  /* Hide scrollbars completely */
+  main {
+    scrollbar-width: none;
+  }
+  
+  main::-webkit-scrollbar {
+    display: none;
+  }
+
+  html {
+    scrollbar-width: none;
+  }
+
+  html::-webkit-scrollbar {
+    display: none;
   }
 }

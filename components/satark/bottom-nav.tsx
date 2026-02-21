@@ -18,7 +18,7 @@ export function BottomNav() {
 
   return (
     <nav
-      className="sticky bottom-0 z-50 bg-card/90 backdrop-blur-2xl border-t border-border/50"
+      className="sticky bottom-0 z-50 bg-white dark:bg-card/90 backdrop-blur-2xl border-t border-slate-100 dark:border-border/50 shadow-[0_-4px_20px_rgba(0,0,0,0.03)]"
       role="tablist"
       aria-label="Main navigation"
     >

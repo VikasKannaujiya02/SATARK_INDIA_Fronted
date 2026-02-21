@@ -21,7 +21,7 @@ export function GlobalHeader() {
         </div>
       )}
 
-      <header className="sticky top-0 z-50 bg-card/80 backdrop-blur-2xl border-b border-border/50">
+      <header className="sticky top-0 z-50 bg-white dark:bg-card/80 backdrop-blur-2xl border-b border-slate-100 dark:border-border/50 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
         <div className="flex items-center justify-between px-4 h-12">
           {/* Left: Logo */}
           <div className="flex items-center gap-2">

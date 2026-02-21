@@ -23,13 +23,13 @@ function AppContent() {
     >
       <div
         className={cn(
-          "flex flex-col min-h-dvh max-w-md mx-auto",
+          "flex flex-col min-h-dvh max-w-md mx-auto bg-slate-50 dark:bg-background",
           isElderly ? "text-lg" : "text-base"
         )}
       >
         <GlobalHeader />
 
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto pb-32 scrollbar-hide">
           {activeTab === "shield" && <TabShield />}
           {activeTab === "investigator" && <TabInvestigator />}
           {activeTab === "offense" && <TabOffense />}
