@@ -112,9 +112,10 @@ export function TabRecovery() {
             { name: "Mom", phone: "+91 98765 43210", emoji: "👩" },
             { name: "Dad", phone: "+91 98765 43211", emoji: "👨" },
           ].map((contact, i) => (
-            <button
+            <div
               key={i}
-              className="flex items-center gap-3 p-4 rounded-2xl bg-white dark:bg-card border border-slate-100 dark:border-border hover:border-primary/40 transition-all active:scale-[0.97] shadow-[0_4px_20px_rgba(0,0,0,0.03)]"
+              className="flex items-center gap-3 p-4 rounded-2xl bg-white dark:bg-card border border-slate-100 dark:border-border hover:border-primary/40 transition-all active:scale-[0.97] shadow-[0_4px_20px_rgba(0,0,0,0.03)] cursor-pointer"
+              onClick={() => window.location.href = `tel:${contact.phone}`}
             >
               <div className="flex items-center justify-center w-12 h-12 rounded-full bg-accent/20 text-lg">
                 {contact.emoji}
@@ -127,10 +128,16 @@ export function TabRecovery() {
                   {contact.phone}
                 </p>
               </div>
-              <button className="flex items-center justify-center w-10 h-10 rounded-full bg-accent/15 hover:bg-accent/25 transition-colors active:scale-[0.95]">
+              <div 
+                className="flex items-center justify-center w-10 h-10 rounded-full bg-accent/15 hover:bg-accent/25 transition-colors active:scale-[0.95]"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  window.location.href = `tel:${contact.phone}`
+                }}
+              >
                 <Phone className="w-4.5 h-4.5 text-accent" />
-              </button>
-            </button>
+              </div>
+            </div>
           ))}
         </div>
       </div>
