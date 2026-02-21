@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import {
   Shield, Phone, MessageSquare, Zap, Timer, AlertTriangle,
-  Cpu, Smartphone, KeyRound, CheckCircle, X, Lock, Fingerprint, Database,
+  Cpu, Smartphone, KeyRound, CheckCircle, X, Lock, Fingerprint, Database, ChevronRight,
 } from "lucide-react"
 import { useApp } from "./app-context"
 import { Switch } from "@/components/ui/switch"
@@ -75,6 +75,29 @@ export function TabShield() {
 
   return (
     <div className="flex flex-col gap-3 p-4 pb-6 relative">
+      {/* === QUICK SCAN PRIMARY WIDGET === */}
+      <button className="relative flex items-center gap-3 p-5 rounded-3xl bg-gradient-to-r from-primary/20 via-primary/10 to-transparent border border-primary/40 hover:border-primary/60 transition-all active:scale-[0.97] shadow-lg shadow-primary/10 overflow-hidden group">
+        {/* Animated background gradient */}
+        <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-transparent to-primary/5 group-hover:from-primary/20 transition-all" />
+        <div className="absolute -top-12 -right-12 w-24 h-24 rounded-full bg-primary/20 blur-2xl group-hover:bg-primary/30 transition-all" />
+        
+        {/* Content */}
+        <div className="relative flex items-center gap-4 flex-1">
+          <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-primary/20 shrink-0 shadow-lg shadow-primary/10">
+            <Zap className={cn("text-primary drop-shadow-[0_0_10px_rgba(59,130,246,0.3)]", isElderly ? "w-7 h-7" : "w-6 h-6")} fill="currentColor" />
+          </div>
+          <div className="text-left">
+            <p className={cn("font-bold text-primary", isElderly ? "text-base" : "text-sm")}>
+              {t("Instant Quick Scan", "तत्काल त्वरित स्कैन")}
+            </p>
+            <p className={cn("text-foreground/70 mt-0.5", isElderly ? "text-xs" : "text-[11px]")}>
+              {t("Tap to scan for threats in 5 seconds", "5 सेकंड में खतरों के लिए स्कैन करने के लिए टैप करें")}
+            </p>
+          </div>
+        </div>
+        <ChevronRight className="relative w-5 h-5 text-primary/60 shrink-0" />
+      </button>
+
       {/* Delta DB Toast */}
       {showDbToast && (
         <div className="flex items-center gap-2 px-3 py-2.5 rounded-2xl bg-accent/10 border border-accent/20">

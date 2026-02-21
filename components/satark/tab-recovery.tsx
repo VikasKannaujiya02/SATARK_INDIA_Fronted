@@ -8,6 +8,7 @@ import {
   ShieldCheck,
   EyeOff,
   Siren,
+  Share2,
 } from "lucide-react"
 import { useApp } from "./app-context"
 import { Switch } from "@/components/ui/switch"
@@ -48,6 +49,7 @@ export function TabRecovery() {
   const [anonymous, setAnonymous] = useState(false)
   const [panicPressed, setPanicPressed] = useState(false)
   const [panicCountdown, setPanicCountdown] = useState<number | null>(null)
+  const [storyShared, setStoryShared] = useState(false)
 
   const handlePanic = () => {
     if (panicPressed) return
@@ -138,6 +140,35 @@ export function TabRecovery() {
           )
         })}
       </div>
+
+      {/* Share Scam Survival Story - Flex Card */}
+      <button
+        onClick={() => {
+          setStoryShared(true)
+          setTimeout(() => setStoryShared(false), 2000)
+        }}
+        className={cn(
+          "flex items-center gap-4 p-4 rounded-2xl border transition-all active:scale-[0.98]",
+          storyShared
+            ? "bg-accent/15 border-accent/30"
+            : "bg-gradient-to-r from-primary/10 to-accent/10 border-primary/30 hover:border-primary/50"
+        )}
+      >
+        <div className={cn("flex items-center justify-center w-12 h-12 rounded-2xl shrink-0", storyShared ? "bg-accent/20" : "bg-primary/20")}>
+          <Share2 className={cn(storyShared ? "text-accent" : "text-primary", isElderly ? "w-6 h-6" : "w-5 h-5")} />
+        </div>
+        <div className="flex-1 text-left min-w-0">
+          <p className={cn("font-bold text-foreground", isElderly ? "text-base" : "text-sm")}>
+            {storyShared 
+              ? t("Story Shared!", "कहानी साझा की गई!")
+              : t("Share Your Scam Survival Story", "अपनी स्कैम से बचाव की कहानी साझा करें")
+            }
+          </p>
+          <p className={cn("text-muted-foreground mt-0.5", isElderly ? "text-[11px]" : "text-[10px]")}>
+            {t("On Instagram & WhatsApp to warn others", "इंस्टाग्राम और व्हाट्सएप पर दूसरों को चेतावनी देने के लिए")}
+          </p>
+        </div>
+      </button>
 
       {/* Anonymous Reporting Toggle */}
       <div className="flex items-center justify-between p-4 rounded-2xl bg-card border border-border">

@@ -13,8 +13,11 @@ import {
   Share2,
   Crown,
   Ban,
+  Mic,
+  MessageCircle,
 } from "lucide-react"
 import { useApp } from "./app-context"
+import { Switch } from "@/components/ui/switch"
 import { cn } from "@/lib/utils"
 
 interface FamilyDevice {
@@ -42,6 +45,8 @@ export function TabNetwork() {
   const [devices] = useState<FamilyDevice[]>(initialDevices)
   const [blocked, setBlocked] = useState<Record<string, boolean>>({})
   const [shared, setShared] = useState(false)
+  const [voiceSOS, setVoiceSOS] = useState(false)
+  const [whatsappConnected, setWhatsappConnected] = useState(false)
 
   return (
     <div className="flex flex-col gap-5 p-4 pb-6">
@@ -54,6 +59,53 @@ export function TabNetwork() {
           {t("Monitor and protect family devices", "परिवार के डिवाइस की निगरानी और सुरक्षा करें")}
         </p>
       </div>
+
+      {/* Voice SOS Toggle */}
+      <div className="flex items-center justify-between p-4 rounded-2xl bg-card border border-border">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-destructive/15 shrink-0">
+            <Mic className={cn("text-destructive", isElderly ? "w-5 h-5" : "w-4 h-4")} />
+          </div>
+          <div>
+            <p className={cn("font-medium text-foreground", isElderly ? "text-sm" : "text-xs")}>
+              {t("Satark Bachao Voice SOS", "सतर्क बचाओ वॉइस SOS")}
+            </p>
+            <p className={cn("text-muted-foreground", isElderly ? "text-[11px]" : "text-[9px]")}>
+              {t("Works in background, hands-free", "बैकग्राउंड में काम करता है, हाथ मुक्त")}
+            </p>
+          </div>
+        </div>
+        <Switch checked={voiceSOS} onCheckedChange={setVoiceSOS} aria-label={t("Toggle voice SOS", "वॉइस SOS टॉगल करें")} />
+      </div>
+
+      {/* WhatsApp Bot Connection */}
+      <button
+        onClick={() => setWhatsappConnected(!whatsappConnected)}
+        className={cn(
+          "flex items-center justify-between p-4 rounded-2xl border transition-all active:scale-[0.98]",
+          whatsappConnected
+            ? "bg-[#25D366]/10 border-[#25D366]/30"
+            : "bg-card border-border hover:border-[#25D366]/50"
+        )}
+      >
+        <div className="flex items-center gap-3">
+          <div className={cn(
+            "flex items-center justify-center w-10 h-10 rounded-xl shrink-0",
+            whatsappConnected ? "bg-[#25D366]/20" : "bg-secondary"
+          )}>
+            <MessageCircle className={cn(whatsappConnected ? "text-[#25D366]" : "text-muted-foreground", isElderly ? "w-5 h-5" : "w-4 h-4")} />
+          </div>
+          <div className="text-left">
+            <p className={cn("font-medium text-foreground", isElderly ? "text-sm" : "text-xs")}>
+              {t("Connect Satark WhatsApp Bot", "सतर्क व्हाट्सएप बॉट कनेक्ट करें")}
+            </p>
+            <p className={cn("text-muted-foreground", isElderly ? "text-[11px]" : "text-[9px]")}>
+              {whatsappConnected ? t("Connected", "जुड़ा हुआ") : t("Get instant alerts via WhatsApp", "व्हाट्सएप से तत्काल अलर्ट पाएं")}
+            </p>
+          </div>
+        </div>
+        {whatsappConnected && <Check className="w-5 h-5 text-[#25D366] shrink-0" />}
+      </button>
 
       {/* Add Device */}
       <button className="flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-dashed border-primary/30 bg-primary/5 hover:bg-primary/10 transition-all active:scale-[0.98]">

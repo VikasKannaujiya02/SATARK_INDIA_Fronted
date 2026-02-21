@@ -12,6 +12,10 @@ import {
   MessageCircle,
   Shield,
   ArrowRight,
+  CheckCircle2,
+  Smartphone,
+  Mail,
+  Search,
 } from "lucide-react"
 import { useApp } from "./app-context"
 import { cn } from "@/lib/utils"
@@ -62,6 +66,9 @@ export function TabOffense() {
   const [generatingReceipt, setGeneratingReceipt] = useState(false)
   const [receiptGenerated, setReceiptGenerated] = useState(false)
   const [callSeconds, setCallSeconds] = useState(0)
+  const [breachCheckEmail, setBreachCheckEmail] = useState("")
+  const [checkingBreaches, setCheckingBreaches] = useState(false)
+  const [breachesFound, setBreachesFound] = useState(false)
 
   useEffect(() => {
     const hasActive = agents.some((a) => a.active)
@@ -91,13 +98,140 @@ export function TabOffense() {
     }, 2000)
   }
 
+  const handleCheckBreaches = () => {
+    if (!breachCheckEmail.trim()) return
+    setCheckingBreaches(true)
+    setBreachesFound(false)
+    setTimeout(() => {
+      setCheckingBreaches(false)
+      setBreachesFound(true)
+    }, 2000)
+  }
+
   return (
     <div className="flex flex-col gap-4 p-4 pb-6">
       <div>
         <h2 className={cn("font-bold text-foreground", isElderly ? "text-xl" : "text-lg")}>
-          {t("Honeypot Agents", "हनीपॉट एजेंट्स")}
+          {t("Advanced Security Tools", "उन्नत सुरक्षा उपकरण")}
         </h2>
         <p className={cn("text-muted-foreground mt-0.5", isElderly ? "text-sm" : "text-xs")}>
+          {t("Honeypot agents & threat monitoring", "हनीपॉट एजेंट्स और खतरे की निगरानी")}
+        </p>
+      </div>
+
+      {/* Device Health Audit Card */}
+      <div className="rounded-3xl bg-card border border-border overflow-hidden">
+        <div className="p-5 flex items-center gap-3 mb-3">
+          <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-primary/15">
+            <Smartphone className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h3 className={cn("font-bold text-foreground", isElderly ? "text-base" : "text-sm")}>
+              {t("Device Health Audit", "डिवाइस स्वास्थ्य ऑडिट")}
+            </h3>
+            <p className={cn("text-muted-foreground", isElderly ? "text-xs" : "text-[10px]")}>
+              {t("System security status check", "सिस्टम सुरक्षा स्थिति जांच")}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-col divide-y divide-border">
+          <div className="flex items-center gap-3 px-5 py-3">
+            <CheckCircle2 className="w-4 h-4 text-accent" />
+            <span className={cn("flex-1 text-foreground", isElderly ? "text-sm" : "text-xs")}>
+              {t("Developer Options: Secure", "डेवलपर विकल्प: सुरक्षित")}
+            </span>
+            <span className="text-accent text-[8px] font-mono font-bold">OK</span>
+          </div>
+          <div className="flex items-center gap-3 px-5 py-3">
+            <CheckCircle2 className="w-4 h-4 text-accent" />
+            <span className={cn("flex-1 text-foreground", isElderly ? "text-sm" : "text-xs")}>
+              {t("OS: Up to date (Android 14)", "OS: अपडेट के अनुसार (Android 14)")}
+            </span>
+            <span className="text-accent text-[8px] font-mono font-bold">OK</span>
+          </div>
+          <div className="flex items-center gap-3 px-5 py-3">
+            <CheckCircle2 className="w-4 h-4 text-accent" />
+            <span className={cn("flex-1 text-foreground", isElderly ? "text-sm" : "text-xs")}>
+              {t("Play Protect: Enabled", "प्ले प्रोटेक्ट: सक्षम")}
+            </span>
+            <span className="text-accent text-[8px] font-mono font-bold">OK</span>
+          </div>
+          <div className="flex items-center gap-3 px-5 py-3">
+            <CheckCircle2 className="w-4 h-4 text-accent" />
+            <span className={cn("flex-1 text-foreground", isElderly ? "text-sm" : "text-xs")}>
+              {t("SATARK Permissions: Granted", "SATARK अनुमतियां: दी गई")}
+            </span>
+            <span className="text-accent text-[8px] font-mono font-bold">OK</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Dark Web Monitor Card */}
+      <div className="rounded-3xl bg-card border border-border overflow-hidden">
+        <div className="p-5 flex items-center gap-3 mb-3">
+          <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-chart-4/15">
+            <Search className="w-5 h-5 text-[#00B0FF]" />
+          </div>
+          <div>
+            <h3 className={cn("font-bold text-foreground", isElderly ? "text-base" : "text-sm")}>
+              {t("Dark Web Monitor", "डार्क वेब मॉनिटर")}
+            </h3>
+            <p className={cn("text-muted-foreground", isElderly ? "text-xs" : "text-[10px]")}>
+              {t("Check if your credentials leaked", "जांचें कि आपके क्रेडेंशियल्स लीक हुए हैं या नहीं")}
+            </p>
+          </div>
+        </div>
+
+        <div className="p-5 flex flex-col gap-3">
+          <input
+            type="email"
+            placeholder={t("Enter your email", "अपना ईमेल दर्ज करें")}
+            value={breachCheckEmail}
+            onChange={(e) => setBreachCheckEmail(e.target.value)}
+            className="w-full px-3 py-2.5 rounded-2xl bg-secondary border border-border text-foreground placeholder-muted-foreground text-sm focus:outline-none focus:border-primary transition-colors"
+          />
+
+          {breachesFound && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-accent/10 border border-accent/20">
+              <CheckCircle2 className="w-4 h-4 text-accent shrink-0" />
+              <span className={cn("text-accent font-medium", isElderly ? "text-xs" : "text-[10px]")}>
+                {t("Check complete! No breaches found.", "जांच पूरी! कोई उल्लंघन नहीं मिला।")}
+              </span>
+            </div>
+          )}
+
+          <button
+            onClick={handleCheckBreaches}
+            disabled={checkingBreaches || !breachCheckEmail.trim()}
+            className={cn(
+              "w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl font-semibold text-xs transition-all active:scale-[0.97]",
+              checkingBreaches || !breachCheckEmail.trim()
+                ? "bg-secondary text-muted-foreground cursor-not-allowed"
+                : "bg-[#00B0FF]/15 text-[#00B0FF] border border-[#00B0FF]/30 hover:bg-[#00B0FF]/20"
+            )}
+          >
+            {checkingBreaches ? (
+              <>
+                <div className="w-3 h-3 border-2 border-[#00B0FF]/30 border-t-[#00B0FF] rounded-full animate-spin" />
+                <span>{t("Checking...", "जांच रहे हैं...")}</span>
+              </>
+            ) : (
+              <>
+                <Search className="w-4 h-4" />
+                <span>{t("Check Breaches", "उल्लंघन जांचें")}</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Honeypot Section Header */}
+      <div className="mt-4">
+        <h3 className={cn("font-bold text-foreground", isElderly ? "text-base" : "text-sm")}>
+          {t("Honeypot Agents", "हनीपॉट एजेंट्स")}
+        </h3>
+        <p className={cn("text-muted-foreground mt-0.5", isElderly ? "text-xs" : "text-[10px]")}>
           {t("Live AI agents wasting scammers' time", "स्कैमर्स का समय बर्बाद करते AI एजेंट्स")}
         </p>
       </div>
@@ -188,7 +322,7 @@ export function TabOffense() {
                     <div className="px-2.5 py-1.5 rounded-xl rounded-tl-sm bg-secondary text-[10px] text-foreground max-w-[80%]">
                       {t(
                         '"Hello sir, I am calling from electricity board..."',
-                        '"नमस्ते सर, मैं बिजली बोर्ड से कॉल कर रहा हूं..."'
+                        '"नमस्ते सर, ���ैं बिजली बोर्ड से कॉल कर रहा हूं..."'
                       )}
                     </div>
                   </div>
