@@ -1,6 +1,6 @@
 "use client"
 
-import React, { createContext, useContext, useState, useCallback } from "react"
+import React, { createContext, useContext, useState, useCallback, useEffect } from "react"
 
 type Language = "en" | "hi"
 type Tab = "shield" | "investigator" | "offense" | "network" | "recovery" | "trust"
@@ -40,6 +40,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const toggleDark = useCallback(() => setIsDark((p) => !p), [])
   const toggleElderly = useCallback(() => setIsElderly((p) => !p), [])
   const toggleAdmin = useCallback(() => setIsAdmin((p) => !p), [])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const setOffline = () => setShowNoInternet(true)
+    const setOnline = () => setShowNoInternet(false)
+    setShowNoInternet(!navigator.onLine)
+    window.addEventListener("offline", setOffline)
+    window.addEventListener("online", setOnline)
+    return () => {
+      window.removeEventListener("offline", setOffline)
+      window.removeEventListener("online", setOnline)
+    }
+  }, [])
 
   const t = useCallback(
     (en: string, hi: string) => (language === "en" ? en : hi),

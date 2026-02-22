@@ -23,7 +23,7 @@ export function BottomNav() {
       aria-label="Main navigation"
     >
       <div className="flex items-stretch justify-around pb-[env(safe-area-inset-bottom)]">
-        {tabs.map((tab) => {
+        {(tabs || []).map((tab) => {
           const isActive = activeTab === tab.id
           const Icon = tab.icon
           return (

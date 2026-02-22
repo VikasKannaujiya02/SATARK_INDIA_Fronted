@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Satark India</string>
+    <string name="title_activity_main">Satark India</string>
+    <string name="package_name">com.satark.india</string>
+    <string name="custom_url_scheme">com.satark.india</string>
+</resources>

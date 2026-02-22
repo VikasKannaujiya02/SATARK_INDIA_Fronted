@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { api } from "@/lib/api"
 import {
   ShieldCheck,
   KeyRound,
@@ -28,11 +29,38 @@ import { useApp } from "./app-context"
 import { Switch } from "@/components/ui/switch"
 import { cn } from "@/lib/utils"
 
+const USER_PHONE = "6388853440"
+
 export function TabTrust() {
   const { t, isElderly, isDark, toggleDark } = useApp()
   const [privacyScreen, setPrivacyScreen] = useState(false)
   const [cacheCleared, setCacheCleared] = useState(false)
   const [rateClicked, setRateClicked] = useState(false)
+  const [trustScore, setTrustScore] = useState(100)
+  const [reportsFiled, setReportsFiled] = useState(0)
+  const [currentStreak, setCurrentStreak] = useState(0)
+
+  useEffect(() => {
+    const doDailyCheckin = async () => {
+      try {
+        const res = await api.post("/api/trust/daily-checkin", { phone: USER_PHONE })
+        setTrustScore(res.data?.trustScore ?? 100)
+        setCurrentStreak(res.data?.currentStreak ?? 0)
+        if (res.data?.reportsFiled !== undefined) setReportsFiled(res.data.reportsFiled)
+      } catch (err) {
+        console.error("Daily check-in failed (backend may be offline):", err)
+        try {
+          const fallback = await api.get(`/api/user/stats/${USER_PHONE}`)
+          setTrustScore(fallback.data?.trustScore ?? 100)
+          setReportsFiled(fallback.data?.reportsFiled ?? 0)
+          setCurrentStreak(fallback.data?.currentStreak ?? 0)
+        } catch (e) {
+          console.error("Fallback stats failed:", e)
+        }
+      }
+    }
+    doDailyCheckin()
+  }, [])
 
   return (
     <div className="flex flex-col gap-5 p-4 pb-6">
@@ -47,13 +75,32 @@ export function TabTrust() {
               Vikas Kannaujiya
             </p>
             <p className={cn("text-muted-foreground mt-1", isElderly ? "text-sm" : "text-xs")}>
-              +91 98765 43210
+              +91 6388853440
             </p>
-            <div className="flex items-center gap-2 mt-2">
+            <div className="flex items-center gap-2 mt-2 flex-wrap">
               <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-accent/20 border border-accent/30">
                 <CheckCircle className="w-3.5 h-3.5 text-accent" fill="currentColor" />
                 <span className={cn("font-semibold text-accent", isElderly ? "text-xs" : "text-[10px]")}>
                   KYC Verified
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20">
+                <ShieldCheck className="w-3.5 h-3.5 text-primary" />
+                <span className={cn("font-mono font-bold text-primary", isElderly ? "text-xs" : "text-[10px]")}>
+                  Trust {trustScore}
+                </span>
+              </div>
+              {currentStreak > 0 && (
+                <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/20 border border-amber-500/30">
+                  <span className="text-base">🔥</span>
+                  <span className={cn("font-mono font-bold text-amber-600 dark:text-amber-400", isElderly ? "text-xs" : "text-[10px]")}>
+                    {currentStreak} {t("Day Streak", "दिन स्ट्रीक")}
+                  </span>
+                </div>
+              )}
+              <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-secondary border border-border">
+                <span className={cn("font-mono font-bold text-foreground", isElderly ? "text-xs" : "text-[10px]")}>
+                  {reportsFiled} {t("Reports", "रिपोर्ट")}
                 </span>
               </div>
             </div>

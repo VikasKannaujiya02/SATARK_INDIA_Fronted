@@ -1,9 +1,10 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { api } from "@/lib/api"
 import {
   Shield, Phone, MessageSquare, Zap, Timer, AlertTriangle,
-  Cpu, Smartphone, KeyRound, CheckCircle, X, Lock, Fingerprint, Database, ChevronRight,
+  Cpu, Smartphone, KeyRound, CheckCircle, X, Lock, Fingerprint, Database, ChevronRight, Info,
 } from "lucide-react"
 import { useApp } from "./app-context"
 import { Switch } from "@/components/ui/switch"
@@ -30,6 +31,25 @@ export function TabShield() {
   const [scamFreezeTimer, setScamFreezeTimer] = useState(30)
   const [showDbToast, setShowDbToast] = useState(true)
   const [showForceUpdate, setShowForceUpdate] = useState(false)
+  const [isAiPaused, setIsAiPaused] = useState(false)
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !navigator.getBattery) return
+    let cancelled = false
+    let removeListener: (() => void) | undefined
+    navigator.getBattery().then((battery) => {
+      const update = () => {
+        if (!cancelled) setIsAiPaused(battery.level < 0.15)
+      }
+      update()
+      battery.addEventListener("levelchange", update)
+      removeListener = () => battery.removeEventListener("levelchange", update)
+    }).catch(() => {})
+    return () => {
+      cancelled = true
+      removeListener?.()
+    }
+  }, [])
 
   useEffect(() => {
     const interval = setInterval(() => setShieldPulse((p) => !p), 2000)
@@ -66,6 +86,25 @@ export function TabShield() {
     return () => clearInterval(interval)
   }, [showScamOverlay])
 
+  // Capacitor hardware bridge: when native (ScamMonitorReceiver) fires this event, show Red Overlay
+  useEffect(() => {
+    const handler = () => setShowScamOverlay(true)
+    if (typeof window !== "undefined") {
+      window.addEventListener("scamSmsReceived", handler)
+      return () => window.removeEventListener("scamSmsReceived", handler)
+    }
+  }, [])
+
+  // Voice AI: speak warning when Red Overlay triggers
+  useEffect(() => {
+    if (!showScamOverlay || typeof window === "undefined" || !window.speechSynthesis) return
+    const msg = new SpeechSynthesisUtterance("Warning! Scam detected by Satark India. Do not share OTP.")
+    msg.rate = 0.9
+    msg.lang = "en-IN"
+    window.speechSynthesis.speak(msg)
+    return () => window.speechSynthesis.cancel()
+  }, [showScamOverlay])
+
   const handleOtpChange = useCallback((index: number, value: string) => {
     if (value.length > 1) return
     setOtpValues(prev => { const n = [...prev]; n[index] = value; return n })
@@ -87,8 +126,55 @@ export function TabShield() {
     setTimeout(() => setPullRefresh(false), 1000)
   }
 
+  const handleSimulateScam = async () => {
+    setShowScamOverlay(true)
+    try {
+      const res = await api.post("/api/sos/trigger", {
+        name: "Vikas Kannaujiya",
+        phone: "6388853440",
+        location: "Unknown",
+      })
+      if (res.data?.whatsappUrl && typeof window !== "undefined") {
+        window.open(res.data.whatsappUrl, "_blank")
+      }
+    } catch (err) {
+      console.error("SOS API call failed (backend may be offline):", err)
+    }
+  }
+
+  const isUpiFreezeActive = upiBreaker && freezeTimer > 0
+
   return (
     <div className="flex flex-col gap-3 p-4 pb-6 relative">
+      {/* Low Battery: On-Device AI paused banner */}
+      {isAiPaused && (
+        <div className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-200">
+          <span className={cn("font-medium", isElderly ? "text-xs" : "text-[11px]")}>
+            {t("Low Battery: On-Device AI paused to save power. Basic shield active.", "कम बैटरी: पावर बचाने के लिए ऑन-डिवाइस AI रुका। बेसिक शील्ड सक्रिय।")}
+          </span>
+        </div>
+      )}
+      {/* True UPI Circuit Breaker Lock - blocks all interaction when freeze active */}
+      {isUpiFreezeActive && (
+        <div
+          className="fixed inset-0 z-[180] flex flex-col items-center justify-center bg-slate-950/95 backdrop-blur-sm"
+          style={{ pointerEvents: 'auto' }}
+          aria-label={t("UPI Freeze Active - Payment lockdown", "UPI फ्रीज सक्रिय")}
+        >
+          <div className="flex flex-col items-center gap-3 px-6 text-center">
+            <Lock className="w-12 h-12 text-accent" />
+            <p className="text-white font-bold text-lg">
+              {t("UPI CIRCUIT BREAKER ACTIVE", "UPI सर्किट ब्रेकर सक्रिय")}
+            </p>
+            <p className="text-white/80 text-sm">
+              {t("All payments frozen for your safety", "आपकी सुरक्षा के लिए सभी भुगतान फ्रीज")}
+            </p>
+            <p className="text-accent font-mono font-bold text-2xl tabular-nums">
+              {freezeTimer}s {t("remaining", "शेष")}
+            </p>
+          </div>
+        </div>
+      )}
       {/* Pull-to-Refresh Indicator */}
       <div className={cn(
         "flex items-center justify-center h-8 text-accent transition-all duration-300 opacity-0",
@@ -193,7 +279,7 @@ export function TabShield() {
             {t("Refresh", "रीफ्रेश")}
           </span>
         </button>
-        <button onClick={() => setShowScamOverlay(true)}
+        <button onClick={handleSimulateScam}
           className="flex items-center gap-2 p-3 rounded-2xl bg-destructive/10 border border-destructive/20 hover:bg-destructive/15 transition-all active:scale-[0.97]">
           <AlertTriangle className="w-4 h-4 text-destructive" />
           <span className={cn("font-bold text-destructive", isElderly ? "text-xs" : "text-[11px]")}>
@@ -242,9 +328,21 @@ export function TabShield() {
             {upiBreaker ? <Timer className="w-4 h-4 text-accent" /> : <Zap className="w-4 h-4 text-muted-foreground" />}
           </div>
           <div className="flex-1 min-w-0">
-            <p className={cn("font-medium text-foreground", isElderly ? "text-sm" : "text-[13px]")}>
-              {t("UPI Circuit Breaker", "UPI सर्किट ब्रेकर")}
-            </p>
+            <div className="flex items-center gap-1.5">
+              <p className={cn("font-medium text-foreground", isElderly ? "text-sm" : "text-[13px]")}>
+                {t("UPI Circuit Breaker", "UPI सर्किट ब्रेकर")}
+              </p>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button type="button" className="p-0.5 rounded-full hover:bg-secondary transition-colors" aria-label="Info">
+                    <Info className="w-3.5 h-3.5 text-muted-foreground hover:text-primary" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-[220px] bg-slate-900 text-white border-slate-700">
+                  <p className="text-xs">Instantly freezes all UPI apps for 30 seconds when a scam is detected. Protects you from making payments under pressure.</p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
             {upiBreaker ? (
               <p className="text-accent text-[10px] font-mono font-bold">
                 {t(`FREEZE: ${freezeTimer}s remaining`, `फ्रीज: ${freezeTimer}s शेष`)}
@@ -305,7 +403,7 @@ export function TabShield() {
 
             {/* OTP Input Boxes */}
             <div className="flex gap-2.5">
-              {otpValues.map((val, i) => (
+              {(otpValues || []).map((val, i) => (
                 <input
                   key={i}
                   type="text"

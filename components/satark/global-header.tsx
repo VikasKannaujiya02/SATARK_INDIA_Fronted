@@ -1,22 +1,24 @@
 "use client"
 
-import { Shield, Bell, WifiOff, Globe } from "lucide-react"
+import { Shield, Bell, WifiOff, Globe, Menu } from "lucide-react"
 import { useApp } from "./app-context"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
+import { SettingsDrawer } from "./settings-drawer"
 
 export function GlobalHeader() {
   const { language, setLanguage, isElderly, showNoInternet, t } = useApp()
   const [notifCount] = useState(3)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   return (
     <>
       {/* No Internet Banner */}
       {showNoInternet && (
-        <div className="flex items-center justify-center gap-2 px-4 py-2 bg-destructive text-destructive-foreground">
-          <WifiOff className="w-3.5 h-3.5" />
+        <div className="flex items-center justify-center gap-2 px-4 py-2 bg-orange-600 text-white animate-in fade-in duration-200">
+          <WifiOff className="w-3.5 h-3.5 shrink-0" />
           <span className={cn("font-semibold", isElderly ? "text-xs" : "text-[11px]")}>
-            {t("No internet connection. Running offline mode.", "इंटरनेट कनेक्शन नहीं है। ऑफलाइन मोड चालू है।")}
+            {t("No Internet: Satark India is operating in Offline TFLite Mode.", "इंटरनेट नहीं: सतर्क इंडिया ऑफलाइन TFLite मोड में चल रहा है।")}
           </span>
         </div>
       )}
@@ -39,8 +41,16 @@ export function GlobalHeader() {
             </div>
           </div>
 
-          {/* Right: Language + Bell */}
+          {/* Right: Menu + Language + Bell */}
           <div className="flex items-center gap-1.5">
+            {/* Settings / Profile Menu */}
+            <button
+              onClick={() => setSettingsOpen(true)}
+              className="flex items-center justify-center w-8 h-8 rounded-xl bg-secondary/80 hover:bg-secondary transition-colors"
+              aria-label="Settings"
+            >
+              <Menu className="w-4 h-4 text-foreground" />
+            </button>
             {/* Language Toggle */}
             <button
               onClick={() => setLanguage(language === "en" ? "hi" : "en")}
@@ -68,6 +78,7 @@ export function GlobalHeader() {
           </div>
         </div>
       </header>
+      <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </>
   )
 }
