@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { sameOriginApi } from "@/lib/api"
+import axios from "axios"
 import { useRouter } from "next/navigation"
 import { Shield, Mail, Lock, CheckCircle2, Smartphone } from "lucide-react"
 
@@ -24,7 +24,7 @@ export default function LoginPage() {
     setError("")
     setSending(true)
     try {
-      const res = await sameOriginApi.post("/api/auth/send-otp", { phone: phone.trim() })
+      const res = await axios.post("https://satark-india-backend.onrender.com/api/auth/send-otp", { phone: phone.trim() })
       if (res.data?.success) {
         setStep(2)
       }
@@ -61,7 +61,7 @@ export default function LoginPage() {
     setError("")
     setVerifying(true)
     try {
-      const res = await sameOriginApi.post("/api/auth/verify-otp", { phone: phone.trim(), otp: otpStr })
+      const res = await axios.post("https://satark-india-backend.onrender.com/api/auth/verify-otp", { phone: phone.trim(), otp: otpStr })
       if (res.data?.token && res.data?.user) {
         localStorage.setItem("satark_token", res.data.token)
         localStorage.setItem("user", JSON.stringify(res.data.user))
