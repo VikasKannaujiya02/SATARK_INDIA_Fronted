@@ -7,6 +7,7 @@ import { Shield, Mail, Lock, CheckCircle2, Smartphone } from "lucide-react"
 
 export default function LoginPage() {
   const [step, setStep] = useState<1 | 2>(1)
+  const [loginMethod, setLoginMethod] = useState("phone")
   const [phone, setPhone] = useState("")
   const [otp, setOtp] = useState(["", "", "", ""])
   const [sending, setSending] = useState(false)
@@ -26,6 +27,7 @@ export default function LoginPage() {
     try {
       const res = await axios.post("https://satark-india-backend.onrender.com/api/auth/send-otp", { phone: phone.trim() })
       if (res.data?.success) {
+        setLoginMethod("phone")
         setStep(2)
       }
     } catch (err) {
@@ -36,9 +38,31 @@ export default function LoginPage() {
         (ax?.message === 'Network Error' && !ax?.response)
       setError(
         isNetworkError
-          ? "Cannot reach the server. Start the backend (SATARK_INDIA Backend) on port 5000, or set NEXT_PUBLIC_API_URL if using another host."
+          ? "Cannot reach the server. Start the backend or check the connection."
           : "Could not send OTP. Please try again."
       )
+    } finally {
+      setSending(false)
+    }
+  }
+
+  const handleEmailLogin = async () => {
+    if (!emailInput.trim() || !emailInput.includes("@")) {
+      setToastMessage("Please enter a valid email address")
+      setTimeout(() => setToastMessage(""), 3000)
+      return
+    }
+    setError("")
+    setSending(true)
+    try {
+      const res = await axios.post("https://satark-india-backend.onrender.com/api/auth/send-email-otp", { email: emailInput.trim() })
+      if (res.data?.success) {
+        setLoginMethod("email")
+        setStep(2)
+      }
+    } catch (err) {
+      console.error(err)
+      setError("Could not send Email OTP. Please try again.")
     } finally {
       setSending(false)
     }
@@ -61,7 +85,14 @@ export default function LoginPage() {
     setError("")
     setVerifying(true)
     try {
-      const res = await axios.post("https://satark-india-backend.onrender.com/api/auth/verify-otp", { phone: phone.trim(), otp: otpStr })
+      let res;
+      // Yahan hum check kar rahe hain ki Phone OTP hai ya Email OTP
+      if (loginMethod === "phone") {
+        res = await axios.post("https://satark-india-backend.onrender.com/api/auth/verify-otp", { phone: phone.trim(), otp: otpStr })
+      } else {
+        res = await axios.post("https://satark-india-backend.onrender.com/api/auth/verify-email-otp", { email: emailInput.trim(), otp: otpStr })
+      }
+
       if (res.data?.token && res.data?.user) {
         localStorage.setItem("satark_token", res.data.token)
         localStorage.setItem("user", JSON.stringify(res.data.user))
@@ -81,18 +112,8 @@ export default function LoginPage() {
     setError("")
   }
 
-  const handleEmailLogin = () => {
-    if (!emailInput.trim()) {
-      setToastMessage("Please enter your email address")
-      setTimeout(() => setToastMessage(""), 3000)
-      return
-    }
-    setToastMessage("Email login coming soon! Use Phone OTP for now.")
-    setTimeout(() => setToastMessage(""), 3000)
-  }
-
   const handleGoogleLogin = () => {
-    setToastMessage("Google login coming soon! Use Phone OTP for now.")
+    setToastMessage("Google login coming soon! Use Phone or Email OTP for now.")
     setTimeout(() => setToastMessage(""), 3000)
   }
 
@@ -124,7 +145,10 @@ export default function LoginPage() {
             <span className="text-xs font-semibold text-blue-200">Securing Digital India</span>
           </div>
           <p className="text-slate-400 text-sm mt-4">
-            {step === 1 ? "Enter your phone number to receive OTP" : "Enter the 4-digit OTP sent to your phone"}
+            {step === 1 
+              ? "Enter your phone number or email to receive OTP" 
+              : `Enter the 4-digit OTP sent to your ${loginMethod === "phone" ? "phone" : "email"}`
+            }
           </p>
         </div>
 
@@ -159,7 +183,7 @@ export default function LoginPage() {
               disabled={sending || !phone.trim() || phone.length !== 10}
               className="w-full py-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 rounded-2xl font-bold text-lg shadow-xl shadow-blue-900/40 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {sending ? (
+              {sending && loginMethod === "phone" ? (
                 <>
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   <span>Sending OTP...</span>
@@ -193,9 +217,14 @@ export default function LoginPage() {
               </div>
               <button
                 onClick={handleEmailLogin}
+                disabled={sending && loginMethod === "email"}
                 className="w-full py-3.5 bg-slate-800/80 hover:bg-slate-800 border-2 border-slate-700 hover:border-slate-600 rounded-2xl font-semibold text-base transition-all active:scale-[0.98] flex items-center justify-center gap-2"
               >
-                <Mail className="w-4 h-4" />
+                {sending && loginMethod === "email" ? (
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <Mail className="w-4 h-4" />
+                )}
                 <span>Continue with Email</span>
               </button>
             </div>
@@ -273,7 +302,7 @@ export default function LoginPage() {
               onClick={goBack}
               className="w-full py-3 text-slate-400 hover:text-white text-sm font-medium transition-colors underline"
             >
-              Change Phone Number
+              Change {loginMethod === "phone" ? "Phone Number" : "Email Address"}
             </button>
           </div>
         )}
