@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const API_BASE =
   typeof window !== 'undefined'
-    ? (process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'https://satark-backend.onrender.com')
+    ? (process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'https://satark-india-backend.onrender.com')
     : '';
 
 export const api = axios.create({
