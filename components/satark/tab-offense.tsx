@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import html2canvas from "html2canvas"
 import { api } from "@/lib/api"
 import {
   Bot,
@@ -250,6 +249,7 @@ export function TabOffense() {
     const element = document.getElementById("receipt-capture")
     if (!element) return
     try {
+      const html2canvas = (await import("html2canvas")).default
       const canvas = await html2canvas(element, { backgroundColor: null })
       const dataUrl = canvas.toDataURL("image/png")
       const link = document.createElement("a")
