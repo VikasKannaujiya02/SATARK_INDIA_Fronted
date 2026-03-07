@@ -347,7 +347,11 @@ export function TabOffense() {
       {/* Cyber Defense Arsenal 2x2 Grid */}
       <div className="grid grid-cols-2 gap-3">
         {/* Card 1: Deepfake Scanner */}
-        <button className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/30 dark:to-cyan-950/30 border border-blue-200 dark:border-blue-800 hover:border-blue-400 dark:hover:border-blue-600 transition-all active:scale-[0.97]">
+        <button
+          type="button"
+          onClick={() => document.getElementById("deepfake-section")?.scrollIntoView({ behavior: "smooth" })}
+          className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/30 dark:to-cyan-950/30 border border-blue-200 dark:border-blue-800 hover:border-blue-400 dark:hover:border-blue-600 transition-all active:scale-[0.97]"
+        >
           <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/50">
             <Smartphone className="w-6 h-6 text-blue-600 dark:text-blue-400" />
           </div>
@@ -360,7 +364,11 @@ export function TabOffense() {
         </button>
 
         {/* Card 2: AI Honeypot */}
-        <button className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 border border-purple-200 dark:border-purple-800 hover:border-purple-400 dark:hover:border-purple-600 transition-all active:scale-[0.97]">
+        <button
+          type="button"
+          onClick={() => document.getElementById("honeypot-section")?.scrollIntoView({ behavior: "smooth" })}
+          className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 border border-purple-200 dark:border-purple-800 hover:border-purple-400 dark:hover:border-purple-600 transition-all active:scale-[0.97]"
+        >
           <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-purple-100 dark:bg-purple-900/50">
             <Bot className="w-6 h-6 text-purple-600 dark:text-purple-400" />
           </div>
@@ -373,7 +381,11 @@ export function TabOffense() {
         </button>
 
         {/* Card 3: Fake Receipt Verifier */}
-        <button className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950/30 dark:to-amber-950/30 border border-orange-200 dark:border-orange-800 hover:border-orange-400 dark:hover:border-orange-600 transition-all active:scale-[0.97]">
+        <button
+          type="button"
+          onClick={() => document.getElementById("receipt-section")?.scrollIntoView({ behavior: "smooth" })}
+          className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950/30 dark:to-amber-950/30 border border-orange-200 dark:border-orange-800 hover:border-orange-400 dark:hover:border-orange-600 transition-all active:scale-[0.97]"
+        >
           <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-orange-100 dark:bg-orange-900/50">
             <FileCheck className="w-6 h-6 text-orange-600 dark:text-orange-400" />
           </div>
@@ -386,7 +398,11 @@ export function TabOffense() {
         </button>
 
         {/* Card 4: Dark Web Leak Check */}
-        <button className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-gradient-to-br from-red-50 to-rose-50 dark:from-red-950/30 dark:to-rose-950/30 border border-red-200 dark:border-red-800 hover:border-red-400 dark:hover:border-red-600 transition-all active:scale-[0.97]">
+        <button
+          type="button"
+          onClick={() => document.getElementById("darkweb-section")?.scrollIntoView({ behavior: "smooth" })}
+          className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-gradient-to-br from-red-50 to-rose-50 dark:from-red-950/30 dark:to-rose-950/30 border border-red-200 dark:border-red-800 hover:border-red-400 dark:hover:border-red-600 transition-all active:scale-[0.97]"
+        >
           <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-red-100 dark:bg-red-900/50">
             <Globe className="w-6 h-6 text-red-600 dark:text-red-400" />
           </div>
@@ -538,7 +554,7 @@ export function TabOffense() {
       </div>
 
       {/* Deepfake Scanner Card */}
-      <div className="rounded-3xl bg-white dark:bg-card border border-slate-100 dark:border-border shadow-[0_4px_20px_rgba(0,0,0,0.03)] overflow-hidden">
+      <div id="deepfake-section" className="rounded-3xl bg-white dark:bg-card border border-slate-100 dark:border-border shadow-[0_4px_20px_rgba(0,0,0,0.03)] overflow-hidden">
         <div className="p-5 flex items-center gap-3 mb-3">
           <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-blue-100 dark:bg-blue-900/50">
             <Smartphone className="w-5 h-5 text-blue-600 dark:text-blue-400" />
@@ -602,7 +618,7 @@ export function TabOffense() {
       </div>
 
       {/* Dark Web Monitor Card */}
-      <div className="rounded-3xl bg-white dark:bg-card border border-slate-100 dark:border-border shadow-[0_4px_20px_rgba(0,0,0,0.03)] overflow-hidden">
+      <div id="darkweb-section" className="rounded-3xl bg-white dark:bg-card border border-slate-100 dark:border-border shadow-[0_4px_20px_rgba(0,0,0,0.03)] overflow-hidden">
         <div className="p-5 flex items-center gap-3 mb-3">
           <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-chart-4/15">
             <Search className="w-5 h-5 text-[#00B0FF]" />
@@ -673,30 +689,9 @@ export function TabOffense() {
         </div>
       </div>
 
-      {/* Honeypot Section Header */}
-      <div className="mt-4">
-        <h3 className={cn("font-bold text-foreground", isElderly ? "text-base" : "text-sm")}>
-          {t("Honeypot Agents", "हनीपॉट एजेंट्स")}
-        </h3>
-        <p className={cn("text-muted-foreground mt-0.5", isElderly ? "text-xs" : "text-[10px]")}>
-          {t("Live AI agents wasting scammers' time", "स्कैमर्स का समय बर्बाद करते AI एजेंट्स")}
-        </p>
-      </div>
-
-      {/* Live Playground Header */}
-      <div className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-accent/10 border border-accent/20">
-        <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-        <span className={cn("font-bold text-accent font-mono", isElderly ? "text-sm" : "text-xs")}>
-          {t("LIVE PLAYGROUND", "लाइव प्लेग्राउंड")}
-        </span>
-        <span className="text-muted-foreground text-[10px] font-mono ml-auto">
-          {t("2 agents deployed", "2 एजेंट तैनात")}
-        </span>
-      </div>
-
-      {/* Agent Cards */}
-      <div className="flex flex-col gap-3">
-        {(agents || []).map((agent) => (
+      {/* Dummy agent cards removed - only Savitri chat shown below */}
+      <div className="hidden" aria-hidden="true">
+        {[].map((agent: HoneypotAgent) => (
           <div
             key={agent.id}
             className={cn(
@@ -804,7 +799,7 @@ export function TabOffense() {
       </div>
 
       {/* Agent Savitri (Honeypot Mode) - Guvi API Chat */}
-      <div className="rounded-3xl bg-slate-900 dark:bg-slate-950 border border-slate-700 overflow-hidden">
+      <div id="honeypot-section" className="rounded-3xl bg-slate-900 dark:bg-slate-950 border border-slate-700 overflow-hidden">
         <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-700">
           <Bot className="w-5 h-5 text-accent" />
           <span className={cn("font-bold text-white", isElderly ? "text-base" : "text-sm")}>
@@ -864,7 +859,7 @@ export function TabOffense() {
       </div>
 
       {/* Fake Evidence Generator */}
-      <div className="rounded-3xl bg-slate-900 dark:bg-slate-950 border border-slate-700 overflow-hidden">
+      <div id="receipt-section" className="rounded-3xl bg-slate-900 dark:bg-slate-950 border border-slate-700 overflow-hidden">
         <div className="p-5">
           <div className="flex items-center gap-3 mb-4">
             <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-[#FFD600]/20">
@@ -928,70 +923,64 @@ export function TabOffense() {
               </p>
               <div
                 id="receipt-capture"
-                className="mt-3 rounded-2xl overflow-hidden bg-white text-slate-900 border border-slate-200 shadow-lg"
+                className="mt-3 rounded-2xl overflow-hidden bg-white text-slate-900 border border-slate-200 shadow-xl"
               >
-                {/* Paytm-style header */}
-                <div className="bg-[#002970] px-4 py-3 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center">
-                      <span className="text-[#002970] font-extrabold text-xs tracking-tight">Paytm</span>
+                {/* Paytm-style header - realistic deep blue */}
+                <div className="bg-[#002970] px-4 py-3.5 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-lg bg-white flex items-center justify-center shrink-0">
+                      <span className="text-[#002970] font-extrabold text-sm tracking-tight">Paytm</span>
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-white text-xs font-semibold leading-tight">
-                        {t("Payment Receipt", "भुगतान रसीद")}
+                      <span className="text-white text-sm font-bold leading-tight">
+                        {t("Payment Successful", "भुगतान सफल")}
                       </span>
-                      <span className="text-blue-200 text-[10px]">
+                      <span className="text-blue-200 text-[11px] mt-0.5">
                         {t("Money transferred successfully", "पैसा सफलतापूर्वक भेजा गया")}
                       </span>
                     </div>
                   </div>
-                  <span className="text-[10px] text-blue-100 font-mono border border-blue-300/40 rounded-full px-2 py-0.5">
+                  <span className="text-[10px] text-blue-100 font-mono font-semibold border border-blue-300/50 rounded-full px-2.5 py-1">
                     UPI
                   </span>
                 </div>
 
-                {/* Body */}
-                <div className="px-4 py-4 space-y-3">
+                {/* Body - amount prominent, clean list */}
+                <div className="px-4 py-5 space-y-4">
                   <div className="flex flex-col items-center gap-2">
-                    <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
-                      <span className="text-emerald-600 text-xl font-bold">✓</span>
+                    <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center">
+                      <span className="text-emerald-600 text-2xl font-bold">✓</span>
                     </div>
-                    <p className="text-xs font-semibold text-emerald-700">
-                      {t("Payment Successful", "भुगतान सफल")}
+                    <p className="text-slate-500 text-xs font-medium">
+                      {t("Payment Receipt", "भुगतान रसीद")}
                     </p>
-                    <p className="text-2xl font-bold text-slate-900">
+                    <p className="text-3xl font-bold text-slate-900 tracking-tight">
                       ₹ {fakeEvidenceAmount || "0"}
                     </p>
                   </div>
 
-                  <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2.5 text-xs space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-500">
-                        {t("Paid to", "भेजा गया")}
-                      </span>
-                      <span className="font-mono font-semibold text-slate-900 truncate max-w-[60%] text-right">
+                  <div className="rounded-xl bg-slate-50 border border-slate-200 divide-y divide-slate-200 overflow-hidden">
+                    <div className="flex items-center justify-between px-3 py-2.5">
+                      <span className="text-slate-500 text-xs">{t("Paid to", "भेजा गया")}</span>
+                      <span className="font-mono font-semibold text-slate-900 text-xs truncate max-w-[65%] text-right">
                         {fakeEvidenceUpiId || "scammer@upi"}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-500">
-                        {t("Date & Time", "तारीख और समय")}
-                      </span>
-                      <span className="font-mono text-[11px] text-slate-900">
+                    <div className="flex items-center justify-between px-3 py-2.5">
+                      <span className="text-slate-500 text-xs">{t("Date & Time", "तारीख और समय")}</span>
+                      <span className="font-mono text-[11px] text-slate-900 text-right">
                         {realTimeDate || t("06 Mar 2026, 06:52 PM", "06 Mar 2026, 06:52 PM")}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-500">
-                        {t("UPI Ref No.", "UPI संदर्भ संख्या")}
-                      </span>
-                      <span className="font-mono text-[11px] text-slate-900">
+                    <div className="flex items-center justify-between px-3 py-2.5">
+                      <span className="text-slate-500 text-xs">{t("UPI Ref No.", "UPI संदर्भ संख्या")}</span>
+                      <span className="font-mono text-[11px] text-slate-900 text-right">
                         {realUtr || "000000000000"}
                       </span>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between text-[10px] text-slate-500">
+                  <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1">
                     <span>{t("This is a computer generated receipt", "यह एक कंप्यूटर जनित रसीद है")}</span>
                     <span className="font-mono text-slate-400">Satark • Paytm Decoy</span>
                   </div>
