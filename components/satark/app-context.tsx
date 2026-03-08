@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from "react"
 import { io, Socket } from "socket.io-client"
@@ -41,16 +41,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [showNoInternet, setShowNoInternet] = useState(false)
   const [socket, setSocket] = useState<Socket | null>(null)
 
+  // Apply dark mode to HTML root
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    
+    const applyTheme = () => {
+      const htmlElement = document.documentElement
+      if (isDark) {
+        htmlElement.classList.add("dark")
+      } else {
+        htmlElement.classList.remove("dark")
+      }
+    }
+
+    applyTheme()
+    localStorage.setItem("satark_darkMode", String(isDark))
+  }, [isDark])
+
   useEffect(() => {
     const newSocket = io("https://satark-india-backend.onrender.com")
     setSocket(newSocket)
 
     newSocket.on("receive_security_ping", (data) => {
-      // Show a global notification if a family member pings
       const name = data.name || "Family Member"
-      // Using browser notification or a global toast
-      // For now, we'll rely on the TabShield listening if needed, 
-      // but a global event is better.
       window.dispatchEvent(new CustomEvent("satark_security_ping", { detail: data }))
     })
 
@@ -64,7 +77,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setIsDark(newVal)
     try {
       await api.put("/api/user/settings", { darkMode: newVal })
-    } catch (e) {}
+    } catch (e) {
+      console.log("Settings update skipped")
+    }
   }, [isDark])
 
   const toggleElderly = useCallback(() => setIsElderly((p) => !p), [])
@@ -82,6 +97,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (e) {
         // Fallback to local storage
+        const savedDark = localStorage.getItem("satark_darkMode")
+        if (savedDark !== null) setIsDark(savedDark === "true")
         const savedLang = localStorage.getItem("satark_language") as Language
         if (savedLang) setLanguage(savedLang)
       }

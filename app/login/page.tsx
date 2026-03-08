@@ -1,21 +1,31 @@
-"use client"
+﻿"use client"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import axios from "axios"
 import { useRouter } from "next/navigation"
 import { Shield, Mail, Lock, CheckCircle2, Smartphone } from "lucide-react"
+import Link from "next/link"
 
 export default function LoginPage() {
   const [step, setStep] = useState<1 | 2>(1)
   const [loginMethod, setLoginMethod] = useState("phone")
   const [phone, setPhone] = useState("")
-  const [otp, setOtp] = useState(["", "", "", ""])
+  const [otp, setOtp] = useState(["", "", "", "", "", ""])
   const [sending, setSending] = useState(false)
   const [verifying, setVerifying] = useState(false)
   const [error, setError] = useState("")
   const [emailInput, setEmailInput] = useState("")
   const [toastMessage, setToastMessage] = useState("")
+  const [resendTimer, setResendTimer] = useState(0)
+  const otpInputsRef = useRef<(HTMLInputElement | null)[]>([])
   const router = useRouter()
+
+  // Resend OTP timer countdown
+  useEffect(() => {
+    if (resendTimer <= 0) return
+    const interval = setInterval(() => setResendTimer((p) => Math.max(0, p - 1)), 1000)
+    return () => clearInterval(interval)
+  }, [resendTimer])
 
   const handleSendOtp = async () => {
     if (!phone.trim()) {
@@ -29,6 +39,9 @@ export default function LoginPage() {
       if (res.data?.success) {
         setLoginMethod("phone")
         setStep(2)
+        setResendTimer(30)
+        setOtp(["", "", "", "", "", ""])
+        setTimeout(() => otpInputsRef.current[0]?.focus(), 100)
       }
     } catch (err) {
       console.error(err)
@@ -59,6 +72,9 @@ export default function LoginPage() {
       if (res.data?.success) {
         setLoginMethod("email")
         setStep(2)
+        setResendTimer(30)
+        setOtp(["", "", "", "", "", ""])
+        setTimeout(() => otpInputsRef.current[0]?.focus(), 100)
       }
     } catch (err) {
       console.error(err)
@@ -69,24 +85,58 @@ export default function LoginPage() {
   }
 
   const handleOtpChange = (index: number, value: string) => {
-    if (value.length > 1) return
+    const cleanedValue = value.replace(/\D/g, '')
+    if (cleanedValue.length > 1) return
+    
     const next = [...otp]
-    next[index] = value
+    next[index] = cleanedValue
     setOtp(next)
     setError("")
+
+    if (cleanedValue && index < otp.length - 1) {
+      setTimeout(() => otpInputsRef.current[index + 1]?.focus(), 0)
+    }
+  }
+
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    const input = e.currentTarget
+    
+    if (e.key === 'Backspace') {
+      e.preventDefault()
+      const next = [...otp]
+      next[index] = ""
+      setOtp(next)
+      
+      if (index > 0) {
+        setTimeout(() => otpInputsRef.current[index - 1]?.focus(), 0)
+      }
+    } else if (e.key === 'ArrowLeft' && index > 0) {
+      e.preventDefault()
+      otpInputsRef.current[index - 1]?.focus()
+    } else if (e.key === 'ArrowRight' && index < otp.length - 1) {
+      e.preventDefault()
+      otpInputsRef.current[index + 1]?.focus()
+    }
+  }
+
+  const handleResendOtp = async () => {
+    if (loginMethod === "phone") {
+      await handleSendOtp()
+    } else {
+      await handleEmailLogin()
+    }
   }
 
   const handleVerifyOtp = async () => {
     const otpStr = otp.join("")
-    if (otpStr.length !== 4) {
-      setError("Enter 4-digit OTP")
+    if (otpStr.length !== 6) {
+      setError("Enter 6-digit OTP")
       return
     }
     setError("")
     setVerifying(true)
     try {
       let res;
-      // Yahan hum check kar rahe hain ki Phone OTP hai ya Email OTP
       if (loginMethod === "phone") {
         res = await axios.post("https://satark-india-backend.onrender.com/api/auth/verify-otp", { phone: phone.trim(), otp: otpStr })
       } else {
@@ -108,8 +158,9 @@ export default function LoginPage() {
 
   const goBack = () => {
     setStep(1)
-    setOtp(["", "", "", ""])
+    setOtp(["", "", "", "", "", ""])
     setError("")
+    setResendTimer(0)
   }
 
   const handleGoogleLogin = () => {
@@ -119,14 +170,12 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 text-white flex flex-col items-center justify-center p-6 relative overflow-hidden">
-      {/* Animated background pattern */}
       <div className="absolute inset-0 opacity-10">
         <div className="absolute top-0 left-0 w-96 h-96 bg-blue-500 rounded-full blur-3xl animate-pulse" />
         <div className="absolute bottom-0 right-0 w-96 h-96 bg-indigo-500 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
       </div>
 
       <div className="w-full max-w-sm space-y-8 relative z-10">
-        {/* Premium Header */}
         <div className="text-center space-y-4">
           <div className="flex items-center justify-center gap-3 mb-2">
             <div className="relative">
@@ -147,14 +196,13 @@ export default function LoginPage() {
           <p className="text-slate-400 text-sm mt-4">
             {step === 1 
               ? "Enter your phone number or email to receive OTP" 
-              : `Enter the 4-digit OTP sent to your ${loginMethod === "phone" ? "phone" : "email"}`
+              : `Enter the 6-digit OTP sent to your ${loginMethod === "phone" ? "phone" : "email"}`
             }
           </p>
         </div>
 
         {step === 1 ? (
           <div className="space-y-5">
-            {/* Phone Number Input */}
             <div className="space-y-2">
               <label className="text-xs font-semibold text-slate-300 uppercase tracking-wide px-1">
                 Phone Number
@@ -177,7 +225,6 @@ export default function LoginPage() {
               </div>
             )}
 
-            {/* Send OTP Button */}
             <button
               onClick={handleSendOtp}
               disabled={sending || !phone.trim() || phone.length !== 10}
@@ -196,14 +243,12 @@ export default function LoginPage() {
               )}
             </button>
 
-            {/* Divider */}
             <div className="relative flex items-center py-4">
               <div className="flex-1 h-px bg-gradient-to-r from-transparent via-slate-700 to-transparent" />
               <span className="px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">OR</span>
               <div className="flex-1 h-px bg-gradient-to-r from-transparent via-slate-700 to-transparent" />
             </div>
 
-            {/* Email Login */}
             <div className="space-y-2">
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
@@ -229,7 +274,6 @@ export default function LoginPage() {
               </button>
             </div>
 
-            {/* Google Login */}
             <button
               onClick={handleGoogleLogin}
               className="w-full py-3.5 bg-white/10 hover:bg-white/15 border-2 border-white/20 hover:border-white/30 rounded-2xl font-semibold text-base transition-all active:scale-[0.98] flex items-center justify-center gap-2 backdrop-blur-sm"
@@ -242,31 +286,45 @@ export default function LoginPage() {
               </svg>
               <span>Continue with Google</span>
             </button>
+
+            <div className="pt-4 text-center border-t border-slate-700">
+              <p className="text-xs text-slate-400 mb-2">Are you an admin?</p>
+              <Link href="/admin/login" className="text-sm font-semibold text-blue-400 hover:text-blue-300 transition-colors">
+                Admin Login →
+              </Link>
+            </div>
           </div>
         ) : (
           <div className="space-y-5">
-            {/* OTP Input */}
             <div className="space-y-2">
               <label className="text-xs font-semibold text-slate-300 uppercase tracking-wide px-1">
                 Enter OTP
               </label>
-              <div className="flex justify-center gap-3">
+              <div className="flex justify-center gap-2">
                 {otp.map((digit, i) => (
                   <input
                     key={i}
+                    ref={(el) => { otpInputsRef.current[i] = el }}
                     type="text"
                     inputMode="numeric"
                     maxLength={1}
                     value={digit}
-                    onChange={(e) => handleOtpChange(i, e.target.value.replace(/\D/g, ''))}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Backspace' && !digit && i > 0) {
-                        const prev = document.querySelector(`input[data-otp-index="${i - 1}"]`) as HTMLInputElement
-                        prev?.focus()
+                    onChange={(e) => handleOtpChange(i, e.target.value)}
+                    onKeyDown={(e) => handleOtpKeyDown(i, e)}
+                    onPaste={(e) => {
+                      e.preventDefault()
+                      const pastedData = e.clipboardData?.getData('text') || ''
+                      const digits = pastedData.replace(/\D/g, '').slice(0, otp.length)
+                      const newOtp = [...otp]
+                      for (let j = 0; j < digits.length; j++) {
+                        newOtp[i + j] = digits[j]
+                      }
+                      setOtp(newOtp)
+                      if (digits.length > 0) {
+                        setTimeout(() => otpInputsRef.current[Math.min(i + digits.length, otp.length - 1)]?.focus(), 0)
                       }
                     }}
-                    data-otp-index={i}
-                    className="w-14 h-16 rounded-xl bg-slate-800/80 border-2 border-slate-700 focus:border-blue-500 text-center text-2xl font-bold outline-none transition-all text-white shadow-lg shadow-black/20"
+                    className="w-12 h-14 rounded-xl bg-slate-800/80 border-2 border-slate-700 focus:border-blue-500 text-center text-2xl font-bold outline-none transition-all text-white shadow-lg shadow-black/20"
                   />
                 ))}
               </div>
@@ -278,10 +336,9 @@ export default function LoginPage() {
               </div>
             )}
 
-            {/* Verify Button */}
             <button
               onClick={handleVerifyOtp}
-              disabled={verifying || otp.join("").length !== 4}
+              disabled={verifying || otp.join("").length !== 6}
               className="w-full py-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 rounded-2xl font-bold text-lg shadow-xl shadow-blue-900/40 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {verifying ? (
@@ -297,7 +354,28 @@ export default function LoginPage() {
               )}
             </button>
 
-            {/* Back Button */}
+            <button
+              onClick={handleResendOtp}
+              disabled={resendTimer > 0 || sending}
+              className={`w-full py-3 rounded-2xl font-semibold text-base transition-all flex items-center justify-center gap-2 ${
+                resendTimer > 0
+                  ? "bg-slate-800/50 text-slate-400 cursor-not-allowed"
+                  : "bg-slate-800/80 hover:bg-slate-800 border-2 border-slate-700 hover:border-slate-600 text-white"
+              }`}
+            >
+              {resendTimer > 0 ? (
+                <>
+                  <div className="w-4 h-4 rounded-full border-2 border-slate-600 border-t-blue-400 animate-spin" />
+                  <span>Resend OTP in {resendTimer}s</span>
+                </>
+              ) : (
+                <>
+                  <Mail className="w-4 h-4" />
+                  <span>Resend OTP</span>
+                </>
+              )}
+            </button>
+
             <button
               onClick={goBack}
               className="w-full py-3 text-slate-400 hover:text-white text-sm font-medium transition-colors underline"
@@ -307,7 +385,6 @@ export default function LoginPage() {
           </div>
         )}
 
-        {/* Footer Trust Badge */}
         <div className="pt-6 text-center">
           <p className="text-xs text-slate-500">
             Protected by <span className="font-semibold text-blue-400">256-bit encryption</span> • 
@@ -316,7 +393,6 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Toast Message */}
       {toastMessage && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-6 py-3 bg-blue-600 text-white rounded-xl shadow-2xl animate-in slide-in-from-bottom-4">
           <p className="text-sm font-medium">{toastMessage}</p>

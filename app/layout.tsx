@@ -28,6 +28,7 @@ export const metadata: Metadata = {
     ],
     apple: '/apple-icon.png',
   },
+  manifest: "/manifest.json",
 }
 
 export const viewport: Viewport = {
@@ -54,3 +55,4 @@ export default function RootLayout({
     </html>
   )
 }
+

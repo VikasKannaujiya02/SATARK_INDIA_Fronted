@@ -1,4 +1,4 @@
-import Link from "next/link"
+﻿import Link from "next/link"
 import { ArrowLeft, ShieldCheck } from "lucide-react"
 
 export default function TermsPage() {
@@ -45,6 +45,33 @@ export default function TermsPage() {
               <p>
                 While we strive for accuracy in our scan results and threat intelligence, Satark India does not guarantee 
                 100% accuracy. Threat levels are based on available patterns and community reports.
+              </p>
+            </section>
+
+            <section className="space-y-3">
+              <h2 className="text-xl font-semibold text-emerald-500">4. Limitation of Liability</h2>
+              <p>
+                Satark India and its affiliates shall not be liable for any direct or indirect damages arising from the use of
+                the service. The maximum aggregate liability arising out of or related to these terms shall not exceed INR 1,000
+                or the amount paid by you in the preceding twelve months, whichever is greater.
+              </p>
+            </section>
+
+            <section className="space-y-3">
+              <h2 className="text-xl font-semibold text-emerald-500">5. User Obligations</h2>
+              <p>
+                You agree not to reverse-engineer, decompile, or misuse the service. You further agree to maintain the
+                confidentiality of your authentication tokens and to notify us immediately if your account is compromised.
+              </p>
+            </section>
+
+            <section className="space-y-3">
+              <h2 className="text-xl font-semibold text-emerald-500">6. GDPR &amp; DPDP Act 2023 Compliance</h2>
+              <p>
+                By using Satark India, you consent to the processing of personal data in accordance with applicable
+                privacy laws, including the GDPR for EU residents and the Digital Personal Data Protection Act, 2023 for
+                Indian residents. You may request access, correction, or deletion of your personal data by contacting
+                privacy@satarkindia.com.
               </p>
             </section>
 
