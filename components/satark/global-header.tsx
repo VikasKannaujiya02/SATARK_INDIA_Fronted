@@ -5,11 +5,15 @@ import { useApp } from "./app-context"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
 import { SettingsDrawer } from "./settings-drawer"
+import toast from "react-hot-toast"
 
 export function GlobalHeader() {
   const { language, setLanguage, isElderly, showNoInternet, t } = useApp()
-  const [notifCount] = useState(3)
   const [settingsOpen, setSettingsOpen] = useState(false)
+
+  const handleNotifClick = () => {
+    toast.success(t("You are all caught up!", "आप पूरी तरह से अपडेट हैं!"))
+  }
 
   return (
     <>
@@ -65,15 +69,11 @@ export function GlobalHeader() {
 
             {/* Notification Bell */}
             <button
+              onClick={handleNotifClick}
               className="relative flex items-center justify-center w-8 h-8 rounded-xl bg-secondary/80 hover:bg-secondary transition-colors"
               aria-label="Notifications"
             >
               <Bell className="w-4 h-4 text-foreground" />
-              {notifCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center w-4 h-4 rounded-full bg-destructive text-[8px] font-bold text-destructive-foreground">
-                  {notifCount}
-                </span>
-              )}
             </button>
           </div>
         </div>

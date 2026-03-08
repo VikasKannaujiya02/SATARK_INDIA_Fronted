@@ -70,8 +70,6 @@ const initialAgents: HoneypotAgent[] = [
 export function TabOffense() {
   const { t, isElderly } = useApp()
   const [agents, setAgents] = useState(initialAgents)
-  const [generatingReceipt, setGeneratingReceipt] = useState(false)
-  const [receiptGenerated, setReceiptGenerated] = useState(false)
   const [callSeconds, setCallSeconds] = useState(0)
   const [breachCheckEmail, setBreachCheckEmail] = useState("")
   const [checkingBreaches, setCheckingBreaches] = useState(false)
@@ -96,13 +94,19 @@ export function TabOffense() {
   const [reportSubmitting, setReportSubmitting] = useState(false)
   const [reportSuccess, setReportSuccess] = useState(false)
   const [reportTrackingId, setReportTrackingId] = useState("")
+  const [reportsList, setReportsList] = useState<any[]>([])
+  const [showHistory, setShowHistory] = useState(false)
 
-  const [fakeEvidenceAmount, setFakeEvidenceAmount] = useState("")
-  const [fakeEvidenceUpiId, setFakeEvidenceUpiId] = useState("")
-  const [fakeEvidenceGenerating, setFakeEvidenceGenerating] = useState(false)
-  const [fakeEvidenceGenerated, setFakeEvidenceGenerated] = useState(false)
-  const [realTimeDate, setRealTimeDate] = useState("")
-  const [realUtr, setRealUtr] = useState("")
+  useEffect(() => {
+    const saved = localStorage.getItem("satark_reports")
+    if (saved) {
+      try {
+        setReportsList(JSON.parse(saved))
+      } catch (e) {
+        console.error(e)
+      }
+    }
+  }, [])
 
   const [savitriMessages, setSavitriMessages] = useState<{ role: "user" | "agent"; text: string }[]>([])
   const [savitriInput, setSavitriInput] = useState("")
@@ -204,66 +208,6 @@ export function TabOffense() {
     return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`
   }
 
-  const handleGenerateReceipt = () => {
-    setGeneratingReceipt(true)
-    setReceiptGenerated(false)
-    setTimeout(() => {
-      setGeneratingReceipt(false)
-      setReceiptGenerated(true)
-    }, 2000)
-  }
-
-  const handleGenerateFakePaymentProof = () => {
-    const amount = fakeEvidenceAmount.trim() || "0"
-    const upi = fakeEvidenceUpiId.trim() || "scammer@upi"
-    // Normalize state so the receipt always uses cleaned values
-    setFakeEvidenceAmount(amount)
-    setFakeEvidenceUpiId(upi)
-
-    // Realistic timestamp and UTR for the decoy receipt
-    const now = new Date()
-    const day = String(now.getDate()).padStart(2, "0")
-    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-    const month = monthNames[now.getMonth()]
-    const year = now.getFullYear()
-    let hours = now.getHours()
-    const minutes = String(now.getMinutes()).padStart(2, "0")
-    const ampm = hours >= 12 ? "PM" : "AM"
-    hours = hours % 12
-    if (hours === 0) hours = 12
-    const hourStr = String(hours).padStart(2, "0")
-    setRealTimeDate(`${day} ${month} ${year}, ${hourStr}:${minutes} ${ampm}`)
-
-    const utr = Math.floor(100000000000 + Math.random() * 900000000000).toString()
-    setRealUtr(utr)
-
-    setFakeEvidenceGenerated(false)
-    setFakeEvidenceGenerating(true)
-    setTimeout(() => {
-      setFakeEvidenceGenerating(false)
-      setFakeEvidenceGenerated(true)
-    }, 1500)
-  }
-
-  const downloadReceiptAsImage = async () => {
-    const element = document.getElementById("receipt-capture")
-    if (!element) return
-    try {
-      const html2canvas = (await import("html2canvas")).default
-      const canvas = await html2canvas(element, { backgroundColor: null })
-      const dataUrl = canvas.toDataURL("image/png")
-      const link = document.createElement("a")
-      link.href = dataUrl
-      link.download = "Paytm_Receipt.png"
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-    } catch (err) {
-      // Non-fatal: if capture fails, just log it
-      console.error("Failed to download receipt image:", err)
-    }
-  }
-
   const handleCheckBreaches = async () => {
     if (!breachCheckEmail.trim()) return
     setCheckingBreaches(true)
@@ -310,23 +254,48 @@ export function TabOffense() {
     if (!reportScammerNumber.trim()) return
     setReportSubmitting(true)
     setReportSuccess(false)
+
+    const trackingId = "SAT-" + Math.random().toString(36).substring(2, 9).toUpperCase()
+    const newReport = {
+      id: Date.now().toString(),
+      trackingId,
+      number: reportScammerNumber.trim(),
+      platform: reportPlatform.trim() || "unknown",
+      description: reportDescription.trim(),
+      anonymous: reportAnonymous,
+      date: new Date().toLocaleDateString(),
+      status: "Pending Investigation",
+    }
+
     try {
-      const res = await api.post("https://satark-india-backend.onrender.com/api/report/submit", {
-        scammerNumber: reportScammerNumber.trim(),
+      // Still try to call backend for real persistence if online
+      const res = await api.post("/api/scam-reports", {
+        phone: reportScammerNumber.trim(),
         platform: reportPlatform.trim() || "unknown",
-        description: reportDescription.trim(),
+        scamDetails: reportDescription.trim(),
         isAnonymous: reportAnonymous,
-      }, {
-        timeout: 15000,
-      })
+      }, { timeout: 10000 })
+
+      const tId = res.data?.trackingId || trackingId
+      const newReportEntry = { ...newReport, trackingId: tId }
+      
+      const updatedList = [newReportEntry, ...reportsList]
+      setReportsList(updatedList)
+      localStorage.setItem("satark_reports", JSON.stringify(updatedList))
+
       setReportSuccess(true)
-      setReportTrackingId(res.data?.trackingId || "")
+      setReportTrackingId(tId)
       setReportScammerNumber("")
       setReportPlatform("")
       setReportDescription("")
-      setTimeout(() => { setReportSuccess(false); setReportTrackingId("") }, 5000)
+      toast.success(t("Report submitted successfully!", "रिपोर्ट सफलतापूर्वक जमा की गई!"))
+      setTimeout(() => {
+        setReportSuccess(false)
+        setReportTrackingId("")
+      }, 5000)
     } catch (err) {
-      console.error("Report submit failed (backend may be offline):", err)
+      console.error("Report submission logic error:", err)
+      toast.error(t("Failed to submit report to server.", "सर्वर पर रिपोर्ट जमा करने में विफल।"))
     } finally {
       setReportSubmitting(false)
     }
@@ -380,24 +349,7 @@ export function TabOffense() {
           </p>
         </button>
 
-        {/* Card 3: Fake Receipt Verifier */}
-        <button
-          type="button"
-          onClick={() => document.getElementById("receipt-section")?.scrollIntoView({ behavior: "smooth" })}
-          className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950/30 dark:to-amber-950/30 border border-orange-200 dark:border-orange-800 hover:border-orange-400 dark:hover:border-orange-600 transition-all active:scale-[0.97]"
-        >
-          <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-orange-100 dark:bg-orange-900/50">
-            <FileCheck className="w-6 h-6 text-orange-600 dark:text-orange-400" />
-          </div>
-          <p className={cn("font-semibold text-foreground text-center", isElderly ? "text-sm" : "text-xs")}>
-            {t("Receipt Verifier", "रसीद सत्यापक")}
-          </p>
-          <p className={cn("text-muted-foreground text-[9px] text-center", isElderly ? "text-[10px]" : "text-[8px]")}>
-            {t("Detect fakes", "नकली का पता लगाएं")}
-          </p>
-        </button>
-
-        {/* Card 4: Dark Web Leak Check */}
+        {/* Card 3: Dark Web Leak Check */}
         <button
           type="button"
           onClick={() => document.getElementById("darkweb-section")?.scrollIntoView({ behavior: "smooth" })}
@@ -413,7 +365,68 @@ export function TabOffense() {
             {t("Find leaks", "लीक खोजें")}
           </p>
         </button>
+
+        {/* Card 4: Report History */}
+        <button
+          type="button"
+          onClick={() => setShowHistory(!showHistory)}
+          className={cn(
+            "flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30 border border-emerald-200 dark:border-emerald-800 hover:border-emerald-400 dark:hover:border-emerald-600 transition-all active:scale-[0.97]",
+            showHistory && "ring-2 ring-emerald-500 ring-offset-2 dark:ring-offset-slate-900"
+          )}
+        >
+          <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/50">
+            <Shield className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+          </div>
+          <p className={cn("font-semibold text-foreground text-center", isElderly ? "text-sm" : "text-xs")}>
+            {t("Report History", "रिपोर्ट इतिहास")}
+          </p>
+          <p className={cn("text-muted-foreground text-[9px] text-center", isElderly ? "text-[10px]" : "text-[8px]")}>
+            {t(`${reportsList.length} cases tracked`, `${reportsList.length} केस ट्रैक किए गए`)}
+          </p>
+        </button>
       </div>
+
+      {/* Report History List Overlay */}
+      {showHistory && (
+        <div className="rounded-3xl bg-white dark:bg-card border border-emerald-100 dark:border-emerald-900/30 shadow-lg p-5 animate-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-bold text-foreground text-sm flex items-center gap-2">
+              <Shield className="w-4 h-4 text-emerald-500" />
+              {t("Recent Reports", "हालिया रिपोर्ट")}
+            </h3>
+            <button onClick={() => setShowHistory(false)} className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider hover:text-foreground">
+              {t("Close", "बंद करें")}
+            </button>
+          </div>
+          <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
+            {reportsList.length > 0 ? (
+              reportsList.map((report) => (
+                <div key={report.id} className="p-3 rounded-2xl bg-secondary/30 border border-border/50 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono font-bold text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 px-2 py-0.5 rounded-full">{report.trackingId}</span>
+                    <span className="text-[9px] text-muted-foreground">{report.date}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Smartphone className="w-3.5 h-3.5 text-muted-foreground" />
+                    <span className="text-xs font-bold text-foreground">{report.number}</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground uppercase">{report.platform}</span>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground line-clamp-1">{report.description}</p>
+                  <div className="flex items-center gap-1 text-[9px] font-bold text-emerald-600">
+                    <CheckCircle2 className="w-3 h-3" />
+                    {report.status}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-center text-muted-foreground text-xs py-8 italic">
+                {t("No reports filed yet.", "अभी तक कोई रिपोर्ट दर्ज नहीं की गई है।")}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Report Scammer Form */}
       <div className="rounded-3xl bg-white dark:bg-card border border-slate-100 dark:border-border shadow-[0_4px_20px_rgba(0,0,0,0.03)] overflow-hidden">
@@ -513,6 +526,7 @@ export function TabOffense() {
           {t("Live AI agents wasting scammers' time", "स्कैमर्स का समय बर्बाद करते AI एजेंट्स")}
         </p>
       </div>
+
       <div className="rounded-3xl bg-white dark:bg-card border border-slate-100 dark:border-border shadow-[0_4px_20px_rgba(0,0,0,0.03)] overflow-hidden">
         <div className="p-5 flex items-center gap-3 mb-3">
           <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-primary/15">
@@ -858,169 +872,6 @@ export function TabOffense() {
         </div>
       </div>
 
-      {/* Fake Evidence Generator */}
-      <div id="receipt-section" className="rounded-3xl bg-slate-900 dark:bg-slate-950 border border-slate-700 overflow-hidden">
-        <div className="p-5">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-[#FFD600]/20">
-              <Receipt className="w-5 h-5 text-[#FFD600]" />
-            </div>
-            <div>
-              <h3 className={cn("font-bold text-white", isElderly ? "text-base" : "text-sm")}>
-                {t("Fake Evidence Generator", "फर्जी सबूत जेनरेटर")}
-              </h3>
-              <p className="text-slate-400 text-[10px]">
-                {t("Generate decoy payment proof to bait scammers", "स्कैमर्स को फंसाने के लिए नकली भुगतान प्रूफ बनाएं")}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-3 mb-4">
-            <input
-              type="text"
-              inputMode="numeric"
-              placeholder={t("Amount to Fake (₹)", "नकली राशि (₹)")}
-              value={fakeEvidenceAmount}
-              onChange={(e) => setFakeEvidenceAmount(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-600 text-white placeholder:text-slate-500 text-sm focus:outline-none focus:border-[#FFD600]/50"
-            />
-            <input
-              type="text"
-              placeholder={t("Scammer's UPI ID", "स्कैमर का UPI ID")}
-              value={fakeEvidenceUpiId}
-              onChange={(e) => setFakeEvidenceUpiId(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-600 text-white placeholder:text-slate-500 text-sm focus:outline-none focus:border-[#FFD600]/50"
-            />
-          </div>
-
-          <button
-            onClick={handleGenerateFakePaymentProof}
-            disabled={fakeEvidenceGenerating}
-            className={cn(
-              "w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-bold transition-all active:scale-[0.97]",
-              fakeEvidenceGenerating
-                ? "bg-slate-700 text-slate-400 cursor-not-allowed"
-                : "bg-[#FFD600] text-slate-900 hover:bg-[#FFD600]/90 shadow-lg shadow-[#FFD600]/20"
-            )}
-          >
-            {fakeEvidenceGenerating ? (
-              <>
-                <div className="w-4 h-4 border-2 border-slate-400/30 border-t-slate-200 rounded-full animate-spin" />
-                <span className="text-sm">{t("Generating...", "बना रहे हैं...")}</span>
-              </>
-            ) : (
-              <>
-                <Receipt className="w-4 h-4" />
-                <span className="text-sm">{t("Generate Fake Payment Proof", "नकली भुगतान प्रूफ बनाएं")}</span>
-              </>
-            )}
-          </button>
-
-          {fakeEvidenceGenerated && (
-            <>
-              <p className="mt-3 text-accent text-xs font-semibold text-center">
-                {t("Fake ₹", "नकली ₹")}{fakeEvidenceAmount || "0"} {t("transfer receipt generated successfully. Ready to send to scammer.", "ट्रांसफर रसीद सफलतापूर्वक बनाई। स्कैमर को भेजने के लिए तैयार।")}
-              </p>
-              <div
-                id="receipt-capture"
-                className="mt-3 rounded-2xl overflow-hidden bg-white text-slate-900 border border-slate-200 shadow-xl"
-              >
-                {/* Paytm-style header - realistic deep blue */}
-                <div className="bg-[#002970] px-4 py-3.5 flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-lg bg-white flex items-center justify-center shrink-0">
-                      <span className="text-[#002970] font-extrabold text-sm tracking-tight">Paytm</span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-white text-sm font-bold leading-tight">
-                        {t("Payment Successful", "भुगतान सफल")}
-                      </span>
-                      <span className="text-blue-200 text-[11px] mt-0.5">
-                        {t("Money transferred successfully", "पैसा सफलतापूर्वक भेजा गया")}
-                      </span>
-                    </div>
-                  </div>
-                  <span className="text-[10px] text-blue-100 font-mono font-semibold border border-blue-300/50 rounded-full px-2.5 py-1">
-                    UPI
-                  </span>
-                </div>
-
-                {/* Body - amount prominent, clean list */}
-                <div className="px-4 py-5 space-y-4">
-                  <div className="flex flex-col items-center gap-2">
-                    <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center">
-                      <span className="text-emerald-600 text-2xl font-bold">✓</span>
-                    </div>
-                    <p className="text-slate-500 text-xs font-medium">
-                      {t("Payment Receipt", "भुगतान रसीद")}
-                    </p>
-                    <p className="text-3xl font-bold text-slate-900 tracking-tight">
-                      ₹ {fakeEvidenceAmount || "0"}
-                    </p>
-                  </div>
-
-                  <div className="rounded-xl bg-slate-50 border border-slate-200 divide-y divide-slate-200 overflow-hidden">
-                    <div className="flex items-center justify-between px-3 py-2.5">
-                      <span className="text-slate-500 text-xs">{t("Paid to", "भेजा गया")}</span>
-                      <span className="font-mono font-semibold text-slate-900 text-xs truncate max-w-[65%] text-right">
-                        {fakeEvidenceUpiId || "scammer@upi"}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between px-3 py-2.5">
-                      <span className="text-slate-500 text-xs">{t("Date & Time", "तारीख और समय")}</span>
-                      <span className="font-mono text-[11px] text-slate-900 text-right">
-                        {realTimeDate || t("06 Mar 2026, 06:52 PM", "06 Mar 2026, 06:52 PM")}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between px-3 py-2.5">
-                      <span className="text-slate-500 text-xs">{t("UPI Ref No.", "UPI संदर्भ संख्या")}</span>
-                      <span className="font-mono text-[11px] text-slate-900 text-right">
-                        {realUtr || "000000000000"}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1">
-                    <span>{t("This is a computer generated receipt", "यह एक कंप्यूटर जनित रसीद है")}</span>
-                    <span className="font-mono text-slate-400">Satark • Paytm Decoy</span>
-                  </div>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={downloadReceiptAsImage}
-                className="mt-3 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-slate-800 text-slate-100 text-xs font-semibold hover:bg-slate-700 border border-slate-600 transition-all active:scale-[0.97]"
-              >
-                <Receipt className="w-3.5 h-3.5" />
-                {t("Download Receipt as Image", "रसीद को इमेज के रूप में डाउनलोड करें")}
-              </button>
-            </>
-          )}
-
-          {receiptGenerated && (
-            <div className="flex items-center gap-2 mt-3 px-3 py-2 rounded-xl bg-accent/10 border border-accent/20">
-              <Sparkles className="w-3.5 h-3.5 text-accent" />
-              <span className="text-accent font-medium text-xs">{t("Decoy receipt generated!", "नकली रसीद बनाई गई!")}</span>
-            </div>
-          )}
-
-          <button
-            onClick={handleGenerateReceipt}
-            disabled={generatingReceipt}
-            className={cn(
-              "w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold text-xs mt-3 transition-all active:scale-[0.97]",
-              generatingReceipt ? "bg-slate-700 text-slate-400 cursor-not-allowed" : "bg-primary/20 text-primary border border-primary/40"
-            )}
-          >
-            {generatingReceipt ? (
-              <><div className="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />{t("Generating...", "बना रहे हैं...")}</>
-            ) : (
-              <><Receipt className="w-3.5 h-3.5" />{t("Generate Fake Receipt", "नकली रसीद बनाएं")}</>
-            )}
-          </button>
-        </div>
-      </div>
     </div>
   )
 }

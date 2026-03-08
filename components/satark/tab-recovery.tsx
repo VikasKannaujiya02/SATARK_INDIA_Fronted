@@ -12,357 +12,457 @@ import {
   Share2,
   Activity,
   Shield,
+  Plus,
+  Trash2,
+  Send,
+  Download,
+  Loader2,
+  Battery,
+  MapPin,
+  Clock,
 } from "lucide-react"
 import { useApp } from "./app-context"
 import { Switch } from "@/components/ui/switch"
 import { cn } from "@/lib/utils"
+import emailjs from "@emailjs/browser"
+import { jsPDF } from "jspdf"
+import toast from "react-hot-toast"
 
-const emergencyActions = [
-  {
-    icon: FileDown,
-    titleEn: "Auto-Complaint Generator",
-    titleHi: "ऑटो-शिकायत जेनरेटर",
-    descEn: "Download pre-filled PDF for cybercrime.gov.in",
-    descHi: "cybercrime.gov.in के लिए भरा हुआ PDF डाउनलोड करें",
-    color: "bg-chart-4/15",
-    iconColor: "text-[#00B0FF]",
-  },
-  {
-    icon: Phone,
-    titleEn: "Offline USSD Helper",
-    titleHi: "ऑफलाइन USSD हेल्पर",
-    descEn: "Dial *99# to freeze bank account instantly",
-    descHi: "*99# डायल करें बैंक खाता तुरंत फ्रीज करने के लिए",
-    color: "bg-accent/15",
-    iconColor: "text-accent",
-  },
-  {
-    icon: ShieldCheck,
-    titleEn: "Claim Cyber Insurance",
-    titleHi: "साइबर बीमा क्लेम करें",
-    descEn: "Get covered up to Rs.10,000 for just Rs.10/mo",
-    descHi: "सिर्फ Rs.10/माह में Rs.10,000 तक का कवर पाएं",
-    color: "bg-chart-5/15",
-    iconColor: "text-[#FFD600]",
-  },
-]
+interface EmergencyContact {
+  id: string
+  name: string
+  relation: string
+  phone: string
+  email: string
+}
 
 export function TabRecovery() {
   const { t, isElderly } = useApp()
-  const [anonymous, setAnonymous] = useState(false)
-  const [panicPressed, setPanicPressed] = useState(false)
-  const [panicCountdown, setPanicCountdown] = useState<number | null>(null)
-  const [storyShared, setStoryShared] = useState(false)
-  const [holdingPanic, setHoldingPanic] = useState(false)
-  const [reportGenerated, setReportGenerated] = useState(false)
-  const [reportGenerating, setReportGenerating] = useState(false)
-  const [cybercellDraft, setCybercellDraft] = useState("")
-  const [showDraftModal, setShowDraftModal] = useState(false)
-  const [microInsuranceSecure, setMicroInsuranceSecure] = useState(false)
-  const [microInsuranceToasting, setMicroInsuranceToasting] = useState(false)
-  const panicIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  
+  // --- SOS State ---
+  const [emergencyContacts, setEmergencyContacts] = useState<EmergencyContact[]>([])
+  const [isSosSending, setIsSosSending] = useState(false)
+  const [showAddContact, setShowAddContact] = useState(false)
+  const [newContact, setNewContact] = useState({ name: "", relation: "", phone: "", email: "" })
 
-  useEffect(() => () => {
-    if (panicIntervalRef.current) clearInterval(panicIntervalRef.current)
+  // --- Complaint Generator State ---
+  const [incidentDescription, setIncidentDescription] = useState("")
+  const [generatedComplaint, setGeneratedComplaint] = useState("")
+  const [isGeneratingFIR, setIsGeneratingFIR] = useState(false)
+  const [isInsured, setIsInsured] = useState(false)
+
+  // Load contacts from backend on mount
+  useEffect(() => {
+    const fetchContacts = async () => {
+      try {
+        const res = await api.get("/api/contacts")
+        if (Array.isArray(res.data)) {
+          setEmergencyContacts(res.data)
+          // Update local storage for fallback consistency
+          localStorage.setItem("satark_emergency_contacts", JSON.stringify(res.data))
+        }
+      } catch (err) {
+        console.error("Failed to fetch contacts:", err)
+        // Fallback to localStorage if API fails
+        const saved = localStorage.getItem("satark_emergency_contacts")
+        if (saved) {
+          try { setEmergencyContacts(JSON.parse(saved)) } catch (e) {}
+        }
+      }
+    }
+    const fetchInsuranceStatus = async () => {
+      try {
+        const res = await api.get("/api/users/profile")
+        setIsInsured(res.data.isInsured)
+      } catch (e) {}
+    }
+    fetchContacts()
+    fetchInsuranceStatus()
   }, [])
 
-  const handleGenerateReport = async () => {
-    setReportGenerating(true)
-    setReportGenerated(false)
-    setCybercellDraft("")
-    setShowDraftModal(false)
+  // --- Action 1: SOS Logic ---
+  const triggerEmergencySOS = async () => {
+    if (emergencyContacts.length === 0) {
+      toast.error(t("Please add at least one emergency contact first", "कृपया कम से कम एक आपातकालीन संपर्क जोड़ें"))
+      setShowAddContact(true)
+      return
+    }
+
+    setIsSosSending(true)
+    const toastId = toast.loading(t("Collecting real-time data & dispatching alerts...", "डेटा एकत्र कर रहे हैं और अलर्ट भेज रहे हैं..."))
+
     try {
-      const res = await api.post("/api/recovery/generate-draft", {
-        name: "Vikas Kannaujiya",
-        phone: "6388853440",
-        scamDetails: "UPI fraud - received call claiming to be from bank, shared OTP, amount debited from account",
-        lostAmount: "25,000",
+      // 1. Get Geolocation
+      const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 })
+      }).catch(() => null)
+
+      // 2. Get Battery
+      let batteryLevel = "Unknown"
+      if ("getBattery" in navigator) {
+        const battery: any = await (navigator as any).getBattery()
+        batteryLevel = `${Math.round(battery.level * 100)}%`
+      }
+
+      // 3. Exact Timestamp
+      const currentTime = new Date().toLocaleString()
+      const lat = pos?.coords.latitude.toFixed(6) || "Unavailable"
+      const lng = pos?.coords.longitude.toFixed(6) || "Unavailable"
+
+      // 4. Send Emails via EmailJS
+      const sendPromises = emergencyContacts.map(contact => {
+        const templateParams = {
+          to_email: contact.email,
+          contact_name: contact.name,
+          user_name: "Satark User",
+          time: currentTime,
+          battery: batteryLevel,
+          lat: lat,
+          lng: lng,
+          message: "I need immediate help. I suspect a cyber threat or physical danger."
+        }
+
+        return emailjs.send(
+          process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID || "",
+          process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID || "",
+          templateParams,
+          process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY || ""
+        )
       })
-      const draft = res.data?.draft || ""
-      setCybercellDraft(draft)
-      setReportGenerated(true)
-      setShowDraftModal(true)
-      setTimeout(() => setReportGenerated(false), 5000)
-    } catch (err) {
-      console.error("Generate draft failed (backend may be offline):", err)
-      setCybercellDraft("Draft generation unavailable. Please try again when online.")
-      setShowDraftModal(true)
+
+      // 5. Trigger Backend SOS logic
+      await api.post("/api/sos/trigger", { 
+        name: "Satark User", 
+        location: `Lat: ${lat}, Lng: ${lng}`,
+        lat, 
+        lng 
+      }).catch(() => {})
+
+      await Promise.all(sendPromises)
+      toast.success(t("Emergency SOS Dispatched to all contacts!", "आपातकालीन SOS सभी संपर्कों को भेज दिया गया!"), { id: toastId })
+    } catch (error) {
+      console.error("SOS Dispatch Failed:", error)
+      toast.error(t("SOS dispatch failed. Please check your connection.", "SOS भेजने में विफल। कृपया अपना कनेक्शन जांचें।"), { id: toastId })
     } finally {
-      setReportGenerating(false)
+      setIsSosSending(false)
     }
   }
 
-  const handlePanic = () => {
-    if (panicPressed) return
-    if (panicIntervalRef.current) clearInterval(panicIntervalRef.current)
-    setPanicPressed(true)
-    setPanicCountdown(5)
-    panicIntervalRef.current = setInterval(() => {
-      setPanicCountdown((prev) => {
-        if (prev === null || prev <= 1) {
-          if (panicIntervalRef.current) {
-            clearInterval(panicIntervalRef.current)
-            panicIntervalRef.current = null
+  const handleInsurancePayment = async () => {
+    const toastId = toast.loading(t("Initiating secure checkout...", "सुरक्षित चेकआउट शुरू कर रहे हैं..."))
+    try {
+      const { data: order } = await api.post("/api/insurance/pay")
+      
+      const options = {
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_placeholder",
+        amount: order.amount,
+        currency: order.currency,
+        name: "Satark India Insurance",
+        description: "1 Year Cyber Fraud Coverage",
+        order_id: order.id,
+        handler: async (response: any) => {
+          try {
+            const verifyRes = await api.post("/api/insurance/verify", response)
+            if (verifyRes.data.success) {
+              setIsInsured(true)
+              toast.success(t("Insurance activated successfully!", "बीमा सफलतापूर्वक सक्रिय हो गया!"))
+            }
+          } catch (e) {
+            toast.error(t("Verification failed", "सत्यापन विफल"))
           }
-          setPanicPressed(false)
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
+        },
+        theme: { color: "#3b82f6" }
+      }
+
+      const rzp = new (window as any).Razorpay(options)
+      rzp.open()
+      toast.dismiss(toastId)
+    } catch (err) {
+      toast.error(t("Payment failed to start", "भुगतान शुरू करने में विफल"), { id: toastId })
+    }
+  }
+
+  // --- Action 2: Complaint Logic ---
+  const generateAIComplaint = async () => {
+    if (!incidentDescription.trim()) {
+      toast.error(t("Please describe the incident first", "कृपया पहले घटना का विवरण दें"))
+      return
+    }
+
+    setIsGeneratingFIR(true)
+    const toastId = toast.loading(t("AI Engine generating professional draft...", "AI इंजन पेशेवर ड्राफ्ट तैयार कर रहा है..."))
+    try {
+      const res = await api.post("/api/generate-complaint", { userStory: incidentDescription })
+      if (res.data?.complaintText) {
+        setGeneratedComplaint(res.data.complaintText)
+        toast.success(t("AI FIR Template Generated!", "AI FIR टेम्पलेट बन गया!"), { id: toastId })
+      }
+    } catch (err) {
+      console.error("AI Complaint Generation Failed:", err)
+      toast.error(t("AI Engine failed. Using fallback template.", "AI इंजन विफल रहा। वैकल्पिक टेम्पलेट का उपयोग कर रहे हैं।"), { id: toastId })
+      // Fallback dummy template
+      const template = `OFFICIAL CYBER CRIME COMPLAINT DRAFT\nDate: ${new Date().toLocaleDateString()}\n\nIncident: ${incidentDescription}`
+      setGeneratedComplaint(template)
+    } finally {
+      setIsGeneratingFIR(false)
+    }
+  }
+
+  const downloadComplaintPDF = () => {
+    if (!generatedComplaint) return
+
+    const doc = new jsPDF()
+    const margin = 15
+    const pageWidth = doc.internal.pageSize.getWidth()
+    const textWidth = pageWidth - (margin * 2)
+    
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(16)
+    doc.text("SATARK INDIA - OFFICIAL COMPLAINT", margin, 20)
+    
+    doc.setFont("helvetica", "normal")
+    doc.setFontSize(10)
+    
+    const splitText = doc.splitTextToSize(generatedComplaint, textWidth)
+    doc.text(splitText, margin, 35)
+    
+    doc.save("Satark_Official_Complaint.pdf")
+    toast.success(t("Complaint PDF Downloaded", "शिकायत PDF डाउनलोड हो गई"))
+  }
+
+  // --- Action 3: Contact Management ---
+  const addContact = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newContact.name || !newContact.email) return
+    
+    const toastId = toast.loading(t("Adding guardian...", "अभिभावक जोड़ रहे हैं..."))
+    try {
+      const res = await api.post("/api/contacts", newContact)
+      if (res.data?.success) {
+        const updatedContacts = [res.data.contact, ...emergencyContacts]
+        setEmergencyContacts(updatedContacts)
+        
+        // Update local storage for fallback consistency
+        localStorage.setItem("satark_emergency_contacts", JSON.stringify(updatedContacts))
+        
+        setNewContact({ name: "", relation: "", phone: "", email: "" })
+        setShowAddContact(false)
+        toast.success(t("Contact Added", "संपर्क जोड़ा गया"), { id: toastId })
+      }
+    } catch (err) {
+      console.error("Failed to add contact:", err)
+      toast.error(t("Failed to add contact", "संपर्क जोड़ने में विफल"), { id: toastId })
+    }
+  }
+
+  const removeContact = async (id: string) => {
+    // Note: We'd need a DELETE /api/contacts/:id route on backend for full production
+    // For now, filtering state to keep it responsive, but API POST is working
+    setEmergencyContacts(emergencyContacts.filter(c => (c as any)._id !== id && (c as any).id !== id))
+    toast.success(t("Contact Removed", "संपर्क हटा दिया गया"))
   }
 
   return (
-    <div className="flex flex-col gap-4 p-4 pb-6">
-      {/* EMERGENCY PANIC BUTTON - Massive, Pulsing, Red */}
-      <button
-        onMouseDown={() => {
-          setHoldingPanic(true)
-          handlePanic()
-        }}
-        onMouseUp={() => setHoldingPanic(false)}
-        onTouchStart={() => {
-          setHoldingPanic(true)
-          handlePanic()
-        }}
-        onTouchEnd={() => setHoldingPanic(false)}
-        className="relative w-full h-32 rounded-3xl bg-gradient-to-b from-destructive to-destructive/80 border-2 border-destructive/50 shadow-[0_0_40px_rgba(255,23,68,0.4)] hover:shadow-[0_0_60px_rgba(255,23,68,0.6)] transition-all active:scale-[0.98] flex flex-col items-center justify-center gap-2 overflow-hidden group"
-      >
-        {/* Pulsing background */}
-        <div className={cn("absolute inset-0 bg-destructive/20 rounded-3xl", holdingPanic && "animate-pulse")} />
-        
-        {/* Content */}
-        <div className="relative flex flex-col items-center justify-center">
-          <div className="flex items-center gap-2 mb-2">
-            <Siren className="w-8 h-8 text-white animate-bounce" fill="white" />
-            <span className="text-white font-black text-2xl">SOS</span>
-            <Siren className="w-8 h-8 text-white animate-bounce" fill="white" style={{ animationDelay: '0.2s' }} />
-          </div>
-          <p className="text-white font-bold text-sm">
-            {panicCountdown ? `${panicCountdown}s...` : t("TAP & HOLD", "TAP & HOLD")}
-          </p>
-        </div>
-      </button>
-
-      {/* Trusted Contacts */}
-      <div>
-        <h3 className={cn("font-bold text-foreground px-1 mb-2", isElderly ? "text-base" : "text-sm")}>
-          {t("Trusted Contacts", "विश्वस्त संपर्क")}
-        </h3>
-        <div className="flex flex-col gap-2">
-          {[
-            { name: "Mom", phone: "+91 98765 43210", emoji: "👩" },
-            { name: "Dad", phone: "+91 98765 43211", emoji: "👨" },
-          ].map((contact, i) => (
-            <div
-              key={i}
-              className="flex items-center gap-3 p-4 rounded-2xl bg-white dark:bg-card border border-slate-100 dark:border-border hover:border-primary/40 transition-all active:scale-[0.97] shadow-[0_4px_20px_rgba(0,0,0,0.03)] cursor-pointer"
-              onClick={() => {
-                // Initiate phone call
-                const tel = `tel:${contact.phone}`;
-                window.location.href = tel;
-              }}
-            >
-              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-accent/20 text-lg">
-                {contact.emoji}
-              </div>
-              <div className="flex-1 text-left">
-                <p className={cn("font-semibold text-foreground", isElderly ? "text-sm" : "text-xs")}>
-                  {contact.name}
-                </p>
-                <p className={cn("text-muted-foreground text-[10px]", isElderly ? "text-[11px]" : "text-[9px]")}>
-                  {contact.phone}
-                </p>
-              </div>
-              <div 
-                className="flex items-center justify-center w-10 h-10 rounded-full bg-accent/15 hover:bg-accent/25 transition-colors active:scale-[0.95]"
-                role="presentation"
-              >
-                <Phone className="w-4.5 h-4.5 text-accent" />
-              </div>
+    <div className="flex flex-col gap-4 p-4 pb-10 max-w-2xl mx-auto">
+      {/* Insurance Banner for SOS */}
+      <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-emerald-500/20 via-emerald-500/10 to-transparent border border-emerald-500/20 p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center">
+              <ShieldCheck className="w-5 h-5 text-emerald-500" />
             </div>
-          ))}
-        </div>
-      </div>
-
-      {/* One-Tap Police 112 Button */}
-      <button className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl bg-destructive/10 border-2 border-destructive/30 hover:bg-destructive/15 transition-all active:scale-[0.97]">
-        <Phone className="w-5 h-5 text-destructive" />
-        <span className={cn("font-bold text-destructive", isElderly ? "text-base" : "text-sm")}>
-          {t("ONE-TAP POLICE (112)", "ONE-TAP पुलिस (112)")}
-        </span>
-      </button>
-
-      {/* Offline Bank Freeze (USSD) */}
-      <button
-        onClick={() => { if (typeof window !== "undefined") window.location.href = "tel:*99#" }}
-        className="w-full flex flex-col items-center gap-1 py-4 rounded-2xl bg-red-600/20 border-2 border-red-500/50 hover:bg-red-600/30 transition-all active:scale-[0.97]"
-      >
-        <Phone className="w-5 h-5 text-red-500" />
-        <span className={cn("font-bold text-red-500", isElderly ? "text-base" : "text-sm")}>
-          {t("Offline Bank Freeze (USSD)", "ऑफलाइन बैंक फ्रीज (USSD)")}
-        </span>
-        <span className="text-red-400/90 text-[10px]">
-          {t("Dial *99# to block your bank account without internet.", "*99# डायल करें बिना इंटरनेट के बैंक खाता ब्लॉक करने के लिए।")}
-        </span>
-      </button>
-
-      {/* Recovery Actions Grid */}
-      <div className="flex flex-col gap-2.5">
-        <h3 className={cn("font-bold text-foreground px-1", isElderly ? "text-base" : "text-sm")}>
-          {t("Recovery Actions", "रिकवरी कार्रवाई")}
-        </h3>
-        {(emergencyActions || []).map((action) => {
-          const Icon = action.icon
-          const isReportAction = action.titleEn === "Auto-Complaint Generator"
-          return (
-            <button
-              key={action.titleEn}
-              onClick={isReportAction ? handleGenerateReport : undefined}
-              disabled={isReportAction && reportGenerating}
-              className="flex items-center gap-3.5 p-4 rounded-2xl bg-white dark:bg-card border border-slate-100 dark:border-border hover:border-primary/40 transition-all active:scale-[0.97] shadow-[0_4px_20px_rgba(0,0,0,0.03)] text-left"
+            <div>
+              <p className="text-xs font-bold text-foreground">{t("Cyber Insurance", "साइबर बीमा")}</p>
+              <p className="text-[10px] text-muted-foreground">{isInsured ? t("Active Coverage", "सक्रिय कवरेज") : t("₹5L Fraud Coverage", "₹5 लाख धोखाधड़ी कवरेज")}</p>
+            </div>
+          </div>
+          {!isInsured && (
+            <button 
+              onClick={handleInsurancePayment}
+              className="px-3 py-1.5 bg-emerald-500 text-white text-[10px] font-bold rounded-lg shadow-lg shadow-emerald-500/20"
             >
-              <div className={cn("flex items-center justify-center w-11 h-11 rounded-xl shrink-0", action.color)}>
-                <Icon className={cn(action.iconColor, isElderly ? "w-5 h-5" : "w-4.5 h-4.5")} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className={cn("font-bold text-foreground", isElderly ? "text-sm" : "text-xs")}>
-                  {t(action.titleEn, action.titleHi)}
-                </p>
-                <p className={cn("text-muted-foreground mt-0.5 leading-snug", isElderly ? "text-xs" : "text-[10px]")}>
-                  {isReportAction && reportGenerated
-                    ? t("Report generated! Download ready.", "रिपोर्ट बनाई! डाउनलोड तैयार।")
-                    : t(action.descEn, action.descHi)}
-                </p>
-                {isReportAction && reportGenerating && (
-                  <div className="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin mt-1" />
-                )}
-              </div>
+              {t("Secure Now", "अभी सुरक्षित करें")}
             </button>
-          )
-        })}
+          )}
+        </div>
       </div>
 
-      {/* Cyber Insurance (Micro) - Premium Card */}
-      <div className="rounded-3xl bg-gradient-to-br from-primary/15 via-slate-900 to-slate-950 border border-primary/30 overflow-hidden shadow-lg">
-        <div className="p-5 flex items-center gap-4">
-          <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-primary/20 shrink-0">
-            <Shield className="w-7 h-7 text-primary" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h3 className={cn("font-bold text-foreground", isElderly ? "text-base" : "text-sm")}>
-              {t("Cyber Insurance (Micro)", "साइबर बीमा (माइक्रो)")}
-            </h3>
-            <p className="text-muted-foreground text-[10px] mt-0.5">
-              {t("Cover up to ₹10,000 for just ₹10/month.", "सिर्फ ₹10/माह में ₹10,000 तक का कवर।")}
-            </p>
-          </div>
-        </div>
-        <div className="px-5 pb-5">
-          <button
-            onClick={() => {
-              setMicroInsuranceToasting(true)
-              setMicroInsuranceSecure(true)
-              setTimeout(() => {
-                setMicroInsuranceToasting(false)
-                setTimeout(() => setMicroInsuranceSecure(false), 500)
-              }, 2500)
-            }}
-            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-all active:scale-[0.98]"
+      {/* SOS Card */}
+      <div className="relative rounded-3xl bg-slate-900 border border-slate-800 p-6 shadow-2xl overflow-hidden group space-y-4">
+        <h2 className="text-xl font-black text-white flex items-center gap-2">
+          <Siren className="text-destructive w-6 h-6 animate-pulse" />
+          {t("MILITARY-GRADE SOS", "मिलिट्री-ग्रेड SOS")}
+        </h2>
+        
+        <button
+          onClick={triggerEmergencySOS}
+          disabled={isSosSending}
+          className={cn(
+            "relative w-full h-40 rounded-3xl flex flex-col items-center justify-center gap-3 transition-all active:scale-[0.98] overflow-hidden group",
+            isSosSending 
+              ? "bg-slate-800 cursor-not-allowed" 
+              : "bg-gradient-to-br from-destructive to-red-900 border-4 border-red-500/30 shadow-[0_0_50px_rgba(255,0,0,0.3)] hover:shadow-[0_0_70px_rgba(255,0,0,0.5)]"
+          )}
+        >
+          {isSosSending ? (
+            <>
+              <Loader2 className="w-12 h-12 text-white animate-spin" />
+              <span className="text-white font-bold animate-pulse">{t("DISPATCHING ALERTS...", "अलर्ट भेज रहे हैं...")}</span>
+            </>
+          ) : (
+            <>
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-from)_0%,_transparent_70%)] opacity-20 group-hover:opacity-40 transition-opacity" />
+              <Siren className="w-14 h-14 text-white animate-bounce" fill="currentColor" />
+              <span className="text-2xl font-black text-white tracking-widest">{t("TRIGGER EMERGENCY SOS", "इमरजेंसी SOS ट्रिगर करें")}</span>
+              <p className="text-red-200 text-xs font-medium uppercase tracking-tighter">{t("Alerts via EmailJS + Real-time Telemetry", "EmailJS + रियल-टाइम टेलीमेट्री के माध्यम से अलर्ट")}</p>
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* SECTION 2: LIVE EMERGENCY CONTACTS */}
+      <div className="rounded-3xl bg-slate-900/50 border border-slate-800 p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="font-bold text-white flex items-center gap-2">
+            <ShieldCheck className="w-5 h-5 text-emerald-500" />
+            {t("Guardian Contacts", "अभिभावक संपर्क")}
+          </h3>
+          <button 
+            onClick={() => setShowAddContact(!showAddContact)}
+            className="p-2 rounded-xl bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 transition-colors"
           >
-            <ShieldCheck className="w-4 h-4" />
-            {t("Secure Now", "अभी सुरक्षित करें")}
+            <Plus className="w-5 h-5" />
           </button>
         </div>
-      </div>
-      {microInsuranceToasting && (
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 px-4 py-3 rounded-2xl bg-accent text-accent-foreground shadow-lg z-50 animate-in fade-in duration-200 flex items-center gap-2">
-          <ShieldCheck className="w-4 h-4" />
-          <span className="text-sm font-semibold">{t("Insurance activated! You're covered.", "बीमा सक्रिय! आप कवर हैं।")}</span>
-        </div>
-      )}
 
-      {/* Share Scam Survival Story - Flex Card */}
-      <button
-        onClick={() => {
-          setStoryShared(true)
-          setTimeout(() => setStoryShared(false), 2000)
-        }}
-        className={cn(
-          "flex items-center gap-4 p-4 rounded-2xl border transition-all active:scale-[0.98]",
-          storyShared
-            ? "bg-accent/15 border-accent/30"
-            : "bg-gradient-to-r from-primary/10 to-accent/10 border-primary/30 hover:border-primary/50"
+        {showAddContact && (
+          <form onSubmit={addContact} className="p-4 rounded-2xl bg-slate-800/50 border border-slate-700 grid grid-cols-2 gap-3 animate-in slide-in-from-top duration-200">
+            <input 
+              placeholder={t("Name", "नाम")} 
+              className="col-span-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white"
+              value={newContact.name}
+              onChange={e => setNewContact({...newContact, name: e.target.value})}
+              required
+            />
+            <input 
+              placeholder={t("Relation", "संबंध")} 
+              className="col-span-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white"
+              value={newContact.relation}
+              onChange={e => setNewContact({...newContact, relation: e.target.value})}
+            />
+            <input 
+              placeholder={t("Phone", "फोन")} 
+              className="col-span-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white"
+              value={newContact.phone}
+              onChange={e => setNewContact({...newContact, phone: e.target.value})}
+            />
+            <input 
+              placeholder={t("Email (Required for SOS)", "ईमेल (SOS के लिए आवश्यक)")} 
+              type="email"
+              className="col-span-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white"
+              value={newContact.email}
+              onChange={e => setNewContact({...newContact, email: e.target.value})}
+              required
+            />
+            <button type="submit" className="col-span-2 py-2 bg-emerald-500 text-slate-950 font-bold rounded-xl hover:bg-emerald-400 transition-colors">
+              {t("Save Guardian", "अभिभावक सहेजें")}
+            </button>
+          </form>
         )}
-      >
-        <div className={cn("flex items-center justify-center w-12 h-12 rounded-2xl shrink-0", storyShared ? "bg-accent/20" : "bg-primary/20")}>
-          <Share2 className={cn(storyShared ? "text-accent" : "text-primary", isElderly ? "w-6 h-6" : "w-5 h-5")} />
-        </div>
-        <div className="flex-1 text-left min-w-0">
-          <p className={cn("font-bold text-foreground", isElderly ? "text-base" : "text-sm")}>
-            {storyShared 
-              ? t("Story Shared!", "कहानी साझा की गई!")
-              : t("Share Your Scam Survival Story", "अपनी स्कैम से बचाव की कहानी साझा करें")
-            }
-          </p>
-          <p className={cn("text-muted-foreground mt-0.5", isElderly ? "text-[11px]" : "text-[10px]")}>
-            {t("On Instagram & WhatsApp to warn others", "इंस्टाग्राम और व्हाट्सएप पर दूसरों को चेतावनी देने के लिए")}
-          </p>
-        </div>
-      </button>
 
-      {/* Cybercell Draft Modal / Textarea */}
-      {showDraftModal && (
-        <div className="fixed inset-0 z-[200] flex items-end justify-center bg-foreground/60 backdrop-blur-sm animate-in fade-in duration-200"
-          onClick={() => setShowDraftModal(false)}>
-          <div className="w-full max-w-md rounded-t-3xl bg-card border-t border-border pb-8 max-h-[85vh] flex flex-col animate-in slide-in-from-bottom duration-300"
-            onClick={(e) => e.stopPropagation()}>
-            <div className="flex justify-center pt-3 pb-2">
-              <div className="w-10 h-1 rounded-full bg-border" />
-            </div>
-            <div className="px-4 pb-2">
-              <h3 className="font-bold text-foreground text-sm">
-                {t("Cybercell Complaint Draft", "साइबरसेल शिकायत ड्राफ्ट")}
-              </h3>
-              <p className="text-muted-foreground text-[10px] mt-0.5">
-                {t("Copy and submit at cybercrime.gov.in", "cybercrime.gov.in पर कॉपी करके जमा करें")}
-              </p>
+        <div className="space-y-2">
+          {emergencyContacts.length > 0 ? (
+            emergencyContacts.map(contact => (
+              <div key={contact.id} className="flex items-center justify-between p-3 rounded-2xl bg-slate-800/30 border border-slate-800 group hover:border-slate-700 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500 font-bold">
+                    {contact.name[0]}
+                  </div>
+                  <div>
+                    <p className="text-white font-bold text-sm">{contact.name} <span className="text-slate-500 text-[10px] font-normal">({contact.relation})</span></p>
+                    <p className="text-slate-400 text-[10px] font-mono">{contact.email}</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => removeContact(contact.id)}
+                  className="p-2 opacity-0 group-hover:opacity-100 text-slate-500 hover:text-destructive transition-all"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))
+          ) : (
+            <p className="text-center text-slate-500 text-xs py-4 italic">{t("No guardians added yet. Alerts won't be sent.", "अभी तक कोई अभिभावक नहीं जोड़ा गया। अलर्ट नहीं भेजे जाएंगे।")}</p>
+          )}
+        </div>
+      </div>
+
+      {/* SECTION 3: EDITABLE AI COMPLAINT GENERATOR */}
+      <div className="rounded-3xl bg-white dark:bg-card border border-slate-100 dark:border-border p-5 space-y-4 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
+        <h3 className="font-bold text-foreground flex items-center gap-2">
+          <FileDown className="w-5 h-5 text-primary" />
+          {t("AI Auto-Complaint Generator", "AI ऑटो-शिकायत जेनरेटर")}
+        </h3>
+        
+        <div className="space-y-3">
+          <p className="text-muted-foreground text-xs">{t("Describe what happened (e.g., 'Received fake KYC call for ₹20,000')", "बताएं क्या हुआ (जैसे, '₹20,000 के लिए फर्जी KYC कॉल आया')")}</p>
+          <textarea
+            value={incidentDescription}
+            onChange={e => setIncidentDescription(e.target.value)}
+            className="w-full min-h-[100px] p-4 rounded-2xl bg-secondary/50 border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
+            placeholder={t("Type incident details here...", "यहां घटना का विवरण लिखें...")}
+          />
+          
+          <button
+            onClick={generateAIComplaint}
+            disabled={isGeneratingFIR}
+            className="w-full py-3 rounded-2xl bg-primary text-primary-foreground font-bold flex items-center justify-center gap-2 hover:bg-primary/90 transition-all active:scale-[0.98] disabled:opacity-50"
+          >
+            {isGeneratingFIR ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
+            {t("GENERATE AI FIR TEMPLATE", "AI FIR टेम्पलेट बनाएं")}
+          </button>
+        </div>
+
+        {generatedComplaint && (
+          <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800 animate-in fade-in duration-500">
+            <div className="flex items-center justify-between px-1">
+              <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">{t("EDITABLE DRAFT", "संपादन योग्य ड्राफ्ट")}</span>
+              <span className="text-[10px] text-muted-foreground italic">{t("Add Transaction IDs manually below", "नीचे मैन्युअल रूप से ट्रांजेक्शन आईडी जोड़ें")}</span>
             </div>
             <textarea
-              readOnly
-              value={cybercellDraft}
-              className="flex-1 min-h-[200px] mx-4 px-4 py-3 rounded-2xl bg-secondary/50 dark:bg-secondary/30 border border-slate-200 dark:border-border text-foreground text-xs font-mono resize-none focus:outline-none focus:ring-1 focus:ring-primary/30"
+              value={generatedComplaint}
+              onChange={e => setGeneratedComplaint(e.target.value)}
+              className="w-full min-h-[300px] p-4 rounded-2xl bg-slate-900 border border-slate-800 text-emerald-400 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
             />
-            <div className="px-4 pt-3">
-              <button onClick={() => setShowDraftModal(false)}
-                className="w-full py-3 rounded-2xl bg-primary text-primary-foreground font-bold text-sm active:scale-[0.98] transition-transform">
-                {t("Close", "बंद करें")}
-              </button>
-            </div>
+            <button
+              onClick={downloadComplaintPDF}
+              className="w-full py-4 rounded-2xl bg-emerald-500 text-slate-950 font-black flex items-center justify-center gap-2 hover:bg-emerald-400 shadow-xl shadow-emerald-500/20 transition-all active:scale-[0.98]"
+            >
+              <Download className="w-5 h-5" />
+              {t("DOWNLOAD FINAL PDF", "अंतिम PDF डाउनलोड करें")}
+            </button>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* Anonymous Reporting Toggle */}
-      <div className="flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-card border border-slate-100 dark:border-border shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/15">
-            <EyeOff className={cn("text-primary", isElderly ? "w-5 h-5" : "w-4 h-4")} />
-          </div>
-          <div>
-            <span className={cn("font-semibold text-foreground", isElderly ? "text-sm" : "text-xs")}>
-              {t("Anonymous Reporting", "गुमनाम रिपोर्टिंग")}
-            </span>
-            <p className={cn("text-muted-foreground", isElderly ? "text-[11px]" : "text-[9px]")}>
-              {t("Your identity stays hidden", "आपकी पहचान छिपी रहेगी")}
-            </p>
-          </div>
-        </div>
-        <Switch
-          checked={anonymous}
-          onCheckedChange={setAnonymous}
-          aria-label={t("Toggle anonymous reporting", "गुमनाम रिपोर्टिंग टॉगल करें")}
-        />
+      {/* SECTION 4: QUICK HELPLINES */}
+      <div className="grid grid-cols-2 gap-3">
+        <button
+          onClick={() => { if (typeof window !== "undefined") window.location.href = "tel:1930" }}
+          className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/30 flex flex-col items-center gap-2 group hover:bg-blue-500/20 transition-all"
+        >
+          <Phone className="w-6 h-6 text-blue-500 group-hover:scale-110 transition-transform" />
+          <span className="text-white font-bold text-sm">1930</span>
+          <span className="text-blue-400 text-[9px] uppercase font-bold">{t("Cyber Helpline", "साइबर हेल्पलाइन")}</span>
+        </button>
+        <button
+          onClick={() => { if (typeof window !== "undefined") window.location.href = "tel:112" }}
+          className="p-4 rounded-2xl bg-red-500/10 border border-red-500/30 flex flex-col items-center gap-2 group hover:bg-red-500/20 transition-all"
+        >
+          <Siren className="w-6 h-6 text-red-500 group-hover:scale-110 transition-transform" />
+          <span className="text-white font-bold text-sm">112</span>
+          <span className="text-red-400 text-[9px] uppercase font-bold">{t("Emergency", "आपातकालीन")}</span>
+        </button>
       </div>
     </div>
   )

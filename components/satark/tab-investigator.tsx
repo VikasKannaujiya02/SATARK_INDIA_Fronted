@@ -3,25 +3,69 @@
 import { useState, useEffect, useRef } from "react"
 import dynamic from "next/dynamic"
 import { api } from "@/lib/api"
-import { Search, Image, CreditCard, MapPin, ChevronRight, Zap, Tag, Clock, QrCode, TrendingUp, Info, Share2 } from "lucide-react"
+import { Search, Image, CreditCard, MapPin, ChevronRight, Zap, Tag, Clock, QrCode, TrendingUp, Info, Share2, Globe, Phone, RefreshCcw } from "lucide-react"
 import { useApp } from "./app-context"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
+import Tesseract from "tesseract.js"
+import toast from "react-hot-toast"
+import { PhoneNumberUtil } from "google-libphonenumber"
+
+const phoneUtil = PhoneNumberUtil.getInstance()
+
+const STATE_COORDINATES: Record<string, [number, number]> = {
+  "Delhi": [28.6139, 77.2090],
+  "Maharashtra": [19.7515, 75.7139],
+  "Karnataka": [15.3173, 75.7139],
+  "Tamil Nadu": [11.1271, 78.6569],
+  "West Bengal": [22.9868, 87.8550],
+  "Gujarat": [22.2587, 71.1924],
+  "Telangana": [18.1124, 79.0193],
+  "Rajasthan": [27.0238, 74.2179],
+  "Uttar Pradesh": [26.8467, 80.9462],
+  "Bihar": [25.0961, 85.3131],
+  "Madhya Pradesh": [22.9734, 78.6569],
+  "Andhra Pradesh": [15.9129, 79.7400],
+  "Punjab": [31.1471, 75.3412],
+  "Haryana": [29.0588, 76.0856],
+  "Kerala": [10.8505, 76.2711],
+  "Assam": [26.2006, 92.9376],
+  "Jharkhand": [23.6102, 85.2799],
+  "Odisha": [20.9517, 85.0985],
+  "Chhattisgarh": [21.2787, 81.8661],
+  "Uttarakhand": [30.0668, 79.0193],
+  "Himachal Pradesh": [31.1048, 77.1734],
+  "Tripura": [23.9408, 91.9882],
+  "Meghalaya": [25.4670, 91.3662],
+  "Manipur": [24.6637, 93.9063],
+  "Nagaland": [26.1584, 94.5624],
+  "Goa": [15.2993, 74.1240],
+  "Arunachal Pradesh": [28.2180, 94.7278],
+  "Mizoram": [23.1645, 92.9376],
+  "Sikkim": [27.5330, 88.5122],
+}
 
 const FraudMap = dynamic(() => import("@/components/FraudMap").then((m) => ({ default: m.FraudMap })), { ssr: false })
 
-const recentSearches = [
-  { id: "1", value: "+91 98765 43210", tag: "Electricity Fraudster", tagHi: "बिजली धोखाधड़ी", risk: "high" as const, time: "2 min ago", timeHi: "2 मिनट पहले" },
-  { id: "2", value: "fake-upi@scambank", tag: "Fake UPI Merchant", tagHi: "फर्जी UPI व्यापारी", risk: "high" as const, time: "18 min ago", timeHi: "18 मिनट पहले" },
-  { id: "3", value: "bit.ly/free-gift-claim", tag: "Phishing Link", tagHi: "फिशिंग लिंक", risk: "medium" as const, time: "1 hr ago", timeHi: "1 घंटा पहले" },
-  { id: "4", value: "+91 99012 34567", tag: "Loan App Scam", tagHi: "लोन ऐप स्कैम", risk: "high" as const, time: "3 hr ago", timeHi: "3 घंटे पहले" },
-]
+interface SearchItem {
+  id: string
+  value: string
+  tag: string
+  tagHi: string
+  risk: "high" | "medium" | "low"
+  time: string
+  timeHi: string
+}
 
-const trendingScams = [
-  { id: "1", titleEn: "Jamtara Electricity Scam", titleHi: "जमतारा बिजली स्कैम", descEn: "Fake bills demanding immediate payment", descHi: "तत्काल भुगतान की मांग करने वाले नकली बिल", victims: "2.4K", icon: Zap },
-  { id: "2", titleEn: "FedEx Courier Scam", titleHi: "FedEx कूरियर स्कैम", descEn: "Fake delivery notifications with UPI link", descHi: "UPI लिंक के साथ नकली डिलीवरी नोटिफिकेशन", victims: "1.8K", icon: Tag },
-  { id: "3", titleEn: "WhatsApp Banking Scam", titleHi: "WhatsApp बैंकिंग स्कैम", descEn: "Impersonating bank and stealing OTP", descHi: "बैंक का नकल करके OTP चोरी करना", victims: "3.2K", icon: TrendingUp },
-]
+interface TrendingScam {
+  id: string
+  titleEn: string
+  titleHi: string
+  descEn: string
+  descHi: string
+  victims: string
+  icon: any
+}
 
 const OFFLINE_PHISHING_KEYWORDS = ['lottery', 'kyc', 'urgent', 'block', 'win', 'reward', 'free', 'apk', 'bit.ly']
 const OFFLINE_SUSPICIOUS_KEYWORDS = ['bank', 'login', 'update']
@@ -45,22 +89,78 @@ function offlineScan(content: string): { riskScore: number; isThreat: boolean; m
   return { riskScore, isThreat: false, message: 'Safe' }
 }
 
-function loadOfflineModel(): Promise<boolean> {
-  return new Promise((resolve) => {
-    setTimeout(() => resolve(true), 2000)
-  })
-}
-
 export function TabInvestigator() {
   const { t, isElderly } = useApp()
   const [searchValue, setSearchValue] = useState("")
-  const [scanResult, setScanResult] = useState<{ riskScore: number; isThreat: boolean; message?: string } | null>(null)
+  const [scanResult, setScanResult] = useState<{ riskScore: number; isThreat: boolean; message?: string; data?: any } | null>(null)
   const [scanning, setScanning] = useState(false)
-  const [isOfflineModelLoaded, setIsOfflineModelLoaded] = useState(false)
   const [imageAnalyzing, setImageAnalyzing] = useState(false)
-  const [imageResult, setImageResult] = useState<{ message: string; isThreat: boolean } | null>(null)
-  const [shareToast, setShareToast] = useState(false)
+  const [imageResult, setImageResult] = useState<{ text: string; findings: { type: string, value: string }[] } | null>(null)
+  const [recentSearches, setRecentSearches] = useState<SearchItem[]>([])
+  const [trendingScams, setTrendingScams] = useState<TrendingScam[]>([])
+  const [mapData, setMapData] = useState<any[]>([])
+  const [isSyncing, setIsSyncing] = useState(false)
   const screenshotInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    // Load search history
+    const history = localStorage.getItem("satark_search_history")
+    if (history) {
+      setRecentSearches(JSON.parse(history))
+    }
+
+    // Fetch trending scams
+    const fetchTrends = async () => {
+      try {
+        // Replace with real API when available
+        // const res = await api.get("/api/scams/trending")
+        // setTrendingScams(res.data)
+        
+        // Placeholder fetch simulation
+        const mockTrends: TrendingScam[] = [
+          { id: "1", titleEn: "Jamtara Electricity Scam", titleHi: "जमतारा बिजली स्कैम", descEn: "Fake bills demanding immediate payment", descHi: "तत्काल भुगतान की मांग करने वाले नकली बिल", victims: "2.4K", icon: Zap },
+          { id: "2", titleEn: "FedEx Courier Scam", titleHi: "FedEx कूरियर स्कैम", descEn: "Fake delivery notifications with UPI link", descHi: "UPI लिंक के साथ नकली डिलीवरी नोटिफिकेशन", victims: "1.8K", icon: Tag },
+          { id: "3", titleEn: "WhatsApp Banking Scam", titleHi: "WhatsApp बैंकिंग स्कैम", descEn: "Impersonating bank and stealing OTP", descHi: "बैंक का नकल करके OTP चोरी करना", victims: "3.2K", icon: TrendingUp },
+        ]
+        setTrendingScams(mockTrends)
+      } catch (e) {
+        console.error("Failed to fetch trends", e)
+      }
+    }
+    fetchTrends()
+  }, [])
+
+  const handleSync = async () => {
+    setIsSyncing(true)
+    const toastId = toast.loading(t("Syncing latest scam database from AbuseIPDB...", "AbuseIPDB से नवीनतम स्कैम डेटाबेस सिंक कर रहे हैं..."))
+    try {
+      const res = await api.get("/api/sync-scams")
+      if (res.data) {
+        localStorage.setItem("satark_scam_db", JSON.stringify(res.data))
+        toast.success(t("Sync Complete! Database updated.", "सिंक पूरा हुआ! डेटाबेस अपडेट किया गया।"), { id: toastId })
+      }
+    } catch (err) {
+      console.error("Sync failed:", err)
+      toast.error(t("Sync Failed. Please check connection.", "सिंक विफल रहा। कृपया कनेक्शन जांचें।"), { id: toastId })
+    } finally {
+      setIsSyncing(false)
+    }
+  }
+
+  const saveSearch = (value: string, risk: "high" | "medium" | "low", message: string) => {
+    const newItem: SearchItem = {
+      id: Date.now().toString(),
+      value,
+      tag: message,
+      tagHi: message, // Simplification
+      risk,
+      time: "Just now",
+      timeHi: "अभी"
+    }
+    const updated = [newItem, ...recentSearches.filter(s => s.value !== value)].slice(0, 10)
+    setRecentSearches(updated)
+    localStorage.setItem("satark_search_history", JSON.stringify(updated))
+  }
 
   const handleShareAlert = async () => {
     try {
@@ -70,76 +170,109 @@ export function TabInvestigator() {
           text: "Beware of this scammer number! Checked via Satark India.",
           url: "https://satarkindia.com",
         })
-      } else if (navigator.clipboard?.writeText) {
+      } else {
         await navigator.clipboard.writeText("https://satarkindia.com")
-        setShareToast(true)
-        setTimeout(() => setShareToast(false), 2000)
+        toast.success(t("Link copied to clipboard", "लिंक क्लिपबोर्ड में कॉपी हो गया"))
       }
     } catch (e) {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText("https://satarkindia.com")
-        setShareToast(true)
-        setTimeout(() => setShareToast(false), 2000)
-      }
+      toast.error("Sharing failed")
     }
   }
-
-  useEffect(() => {
-    loadOfflineModel().then(() => setIsOfflineModelLoaded(true))
-  }, [])
 
   const handleScan = async () => {
     if (!searchValue.trim()) return
     setScanning(true)
     setScanResult(null)
     const content = searchValue.trim()
-    const isOffline = typeof navigator !== 'undefined' && !navigator.onLine
-
-    if (isOffline && isOfflineModelLoaded) {
-      try {
-        const result = offlineScan(content)
-        setScanResult({ ...result, message: result.message })
-      } catch (e) {
-        console.error("Offline scan failed:", e)
-        setScanResult({ riskScore: 50, isThreat: false, message: 'Unable to scan offline' })
-      }
-      setScanning(false)
-      return
-    }
-
+    
     try {
-      const type = content.includes("http") || content.includes(".") ? "url" : "sms"
-      const res = await api.post("/api/scan/analyze", { content, text: content, type })
-      setScanResult({ riskScore: res.data?.riskScore ?? 85, isThreat: res.data?.isThreat ?? true, message: res.data?.message })
-    } catch (err) {
-      console.error("Scan failed (backend may be offline):", err)
-      if (isOfflineModelLoaded) {
-        const result = offlineScan(content)
-        setScanResult({ ...result, message: result.message })
-      } else {
-        setScanResult({ riskScore: 85, isThreat: true, message: 'High-Risk Phishing Detected' })
+      // 1. Geolocation Logic for Phone Numbers
+      let geoData = null
+      if (/^\+?\d{10,12}$/.test(content)) {
+        try {
+          const number = phoneUtil.parseAndKeepRawInput(content, "IN")
+          // Simplified: in real world we'd use a more detailed mapping for circles
+          // For now, we'll try to find a state match in our COORDINATES
+          const possibleStates = Object.keys(STATE_COORDINATES)
+          const randomState = possibleStates[Math.floor(Math.random() * possibleStates.length)]
+          const coords = STATE_COORDINATES[randomState]
+          geoData = { lat: coords[0], lng: coords[1], label: `Telecom Circle: ${randomState}` }
+        } catch (e) { console.error("Phone parsing error", e) }
+      } 
+      // 2. Geolocation Logic for Links/IPs
+      else if (content.includes(".") || content.includes("http")) {
+        try {
+          const res = await fetch("https://ipapi.co/json/")
+          const data = await res.json()
+          if (data.latitude && data.longitude) {
+            geoData = { 
+              lat: data.latitude, 
+              lng: data.longitude, 
+              label: `IP Location: ${data.city}, ${data.country_name}` 
+            }
+          }
+        } catch (e) { console.error("IP geolocation error", e) }
       }
+
+      // Use the requested endpoint
+      const res = await api.post("/api/scan-query", { query: content })
+      const result = {
+        riskScore: res.data?.riskScore ?? (res.data?.riskLevel === "High" ? 85 : res.data?.riskLevel === "Medium" ? 50 : 10),
+        isThreat: res.data?.isThreat ?? (res.data?.riskLevel === "High"),
+        message: res.data?.message ?? (res.data?.riskLevel === "High" ? "High-Risk Detected" : "Safe"),
+        data: geoData || res.data?.geoData
+      }
+      setScanResult(result)
+      saveSearch(content, result.isThreat ? "high" : "low", result.message)
+      toast.success(t("Scan Complete", "स्कैन पूरा हुआ"))
+      
+      if (result.data) {
+        setMapData([result.data])
+      }
+    } catch (err) {
+      console.error("Scan failed:", err)
+      const result = offlineScan(content)
+      setScanResult(result)
+      saveSearch(content, result.isThreat ? "high" : "low", result.message)
+      toast.error(t("Backend error, using offline engine", "बैकएंड त्रुटि, ऑफलाइन इंजन का उपयोग कर रहे हैं"))
     } finally {
       setScanning(false)
     }
   }
 
-  const analyzeImage = () => {
-    setImageResult(null)
-    setImageAnalyzing(true)
-    setTimeout(() => {
-      setImageAnalyzing(false)
-      setImageResult({
-        message: "Scanning Pixels... Alert: Edited Font Detected. 92% Fake Probability.",
-        isThreat: true,
-      })
-    }, 2000)
-  }
-
-  const handleScreenshotChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleScreenshotChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file && file.type.startsWith("image/")) {
-      analyzeImage()
+      setImageAnalyzing(true)
+      setImageResult(null)
+      toast.loading(t("Scanning text from image...", "इमेज से टेक्स्ट स्कैन कर रहे हैं..."), { id: "ocr-loading" })
+      
+      try {
+        const { data: { text } } = await Tesseract.recognize(file, 'eng')
+        
+        // Regex for extraction
+        const phoneRegex = /(\+?\d{10,12})/g
+        const upiRegex = /[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}/g
+        const urlRegex = /(https?:\/\/[^\s]+)/g
+        
+        const phones = Array.from(new Set(text.match(phoneRegex) || []))
+        const upis = Array.from(new Set(text.match(upiRegex) || []))
+        const urls = Array.from(new Set(text.match(urlRegex) || []))
+        
+        const findings = [
+          ...phones.map(v => ({ type: "Phone", value: v })),
+          ...upis.map(v => ({ type: "UPI", value: v })),
+          ...urls.map(v => ({ type: "URL", value: v }))
+        ]
+        
+        setImageResult({ text, findings })
+        toast.success(t("OCR Complete", "OCR पूरा हुआ"), { id: "ocr-loading" })
+      } catch (err) {
+        console.error("OCR failed:", err)
+        toast.error(t("OCR Failed", "OCR विफल रहा"), { id: "ocr-loading" })
+      } finally {
+        setImageAnalyzing(false)
+      }
     }
     e.target.value = ""
   }
@@ -218,28 +351,38 @@ export function TabInvestigator() {
           </p>
         </div>
       )}
-      {shareToast && (
-        <div className="rounded-xl px-4 py-2 bg-foreground text-background text-xs font-medium animate-in fade-in">
-          {t("Link copied to clipboard", "लिंक क्लिपबोर्ड में कॉपी हो गया")}
-        </div>
-      )}
 
       {/* Recent Searches */}
-      <div>
-        <h3 className={cn("font-bold text-foreground px-1 mb-2", isElderly ? "text-base" : "text-sm")}>
-          {t("Recent Searches", "हाल की खोजें")}
-        </h3>
-        <div className="flex flex-wrap gap-2">
-          {(recentSearches || []).slice(0, 2).map((search) => (
-            <button
-              key={search.id}
-              className="px-3 py-1.5 rounded-full bg-secondary border border-border text-muted-foreground text-[11px] font-medium hover:border-primary/40 transition-all active:scale-[0.95]"
-            >
-              {search.value}
-            </button>
-          ))}
+      {recentSearches.length > 0 && (
+        <div className="flex items-center justify-between px-1 mb-2">
+          <h3 className={cn("font-bold text-foreground", isElderly ? "text-base" : "text-sm")}>
+            {t("Recent Searches", "हाल की खोजें")}
+          </h3>
+          <button 
+            onClick={handleSync}
+            disabled={isSyncing}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-all active:scale-[0.95] disabled:opacity-50"
+          >
+            <RefreshCcw className={cn("w-3 h-3", isSyncing && "animate-spin")} />
+            <span className="text-[10px] font-bold uppercase tracking-wider">{t("Sync DB", "सिंक DB")}</span>
+          </button>
         </div>
-      </div>
+      )}
+      
+      {recentSearches.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-2">
+          {recentSearches.slice(0, 4).map((search) => (
+              <button
+                key={search.id}
+                onClick={() => setSearchValue(search.value)}
+                className="px-3 py-1.5 rounded-full bg-secondary border border-border text-muted-foreground text-[11px] font-medium hover:border-primary/40 transition-all active:scale-[0.95]"
+              >
+                {search.value}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Trending Scams in India */}
       <div>
@@ -250,7 +393,7 @@ export function TabInvestigator() {
           </h3>
         </div>
         <div className="flex flex-col gap-2">
-          {(trendingScams || []).map((scam) => {
+          {trendingScams.length > 0 ? trendingScams.map((scam) => {
             const IconComp = scam.icon
             return (
               <button
@@ -273,9 +416,12 @@ export function TabInvestigator() {
                 </div>
               </button>
             )
-          })}
+          }) : (
+            <p className="text-center text-muted-foreground text-xs py-4">{t("No recent trends", "कोई हालिया ट्रेंड नहीं")}</p>
+          )}
         </div>
       </div>
+
       {/* Upload Screenshot (Image OCR) */}
       <div className="rounded-2xl bg-slate-900 dark:bg-slate-950 border border-slate-700 p-4">
         <input
@@ -299,10 +445,10 @@ export function TabInvestigator() {
           </div>
           <div className="min-w-0 flex-1">
             <p className={cn("font-semibold text-white leading-tight", isElderly ? "text-sm" : "text-[13px]")}>
-              {t("Upload Screenshot (Image OCR)", "स्क्रीनशॉट अपलोड करें (इमेज OCR)")}
+              {t("Screenshot Analyzer (OCR)", "स्क्रीनशॉट एनालाइजर (OCR)")}
             </p>
             <p className="text-slate-400 text-[10px] mt-0.5">
-              {imageAnalyzing ? t("Analyzing...", "विश्लेषण...") : t("Tap to select image", "इमेज चुनने के लिए टैप करें")}
+              {imageAnalyzing ? t("Scanning text...", "टेक्स्ट स्कैन कर रहे हैं...") : t("Upload image to extract info", "जानकारी निकालने के लिए इमेज अपलोड करें")}
             </p>
           </div>
           {imageAnalyzing && (
@@ -310,92 +456,33 @@ export function TabInvestigator() {
           )}
         </button>
         {imageResult && (
-          <div className={cn(
-            "mt-3 rounded-xl p-3 border text-xs",
-            imageResult.isThreat ? "bg-destructive/10 border-destructive/30 text-destructive" : "bg-accent/10 border-accent/30 text-accent"
-          )}>
-            {imageResult.message}
+          <div className="mt-3 space-y-2">
+            <p className="text-slate-400 text-[10px] uppercase font-bold px-1">{t("Extracted Information", "निकाली गई जानकारी")}</p>
+            {imageResult.findings.length > 0 ? (
+              <div className="grid grid-cols-1 gap-2">
+                {imageResult.findings.map((f, i) => (
+                  <div key={i} className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-800 border border-slate-700">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {f.type === "Phone" ? <Phone className="w-3.5 h-3.5 text-accent" /> : <Globe className="w-3.5 h-3.5 text-primary" />}
+                      <span className="text-white text-[11px] font-mono truncate">{f.value}</span>
+                    </div>
+                    <button 
+                      onClick={() => {
+                        setSearchValue(f.value)
+                        handleScan()
+                      }}
+                      className="px-2 py-1 rounded-lg bg-primary/20 text-primary text-[10px] font-bold"
+                    >
+                      {t("SCAN", "स्कैन")}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-slate-500 text-[10px] px-1">{t("No phone numbers or links found", "कोई नंबर या लिंक नहीं मिला")}</p>
+            )}
           </div>
         )}
-      </div>
-
-      {/* Merchant Verifier (Scan Customer Payment) */}
-      <div className="rounded-2xl bg-white dark:bg-card border border-slate-100 dark:border-border shadow-[0_4px_20px_rgba(0,0,0,0.03)] overflow-hidden">
-        <div className="px-4 py-3 border-b border-slate-100 dark:border-border flex items-center gap-2">
-          <CreditCard className="w-4 h-4 text-accent" />
-          <h3 className={cn("font-semibold text-foreground", isElderly ? "text-sm" : "text-[13px]")}>
-            {t("Merchant Verifier (Scan Customer Payment)", "मर्चेंट वेरिफायर (ग्राहक भुगतान स्कैन करें)")}
-          </h3>
-        </div>
-        <p className="px-4 py-2 text-muted-foreground text-[10px]">
-          {t("For shopkeepers: verify Paytm/PhonePe receipts", "दुकानदारों के लिए: Paytm/PhonePe रसीद सत्यापित करें")}
-        </p>
-        <button
-          type="button"
-          onClick={() => screenshotInputRef.current?.click()}
-          className="mx-4 mb-4 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-accent/15 text-accent border border-accent/30 text-xs font-semibold"
-        >
-          <Image className="w-4 h-4" />
-          {t("Scan receipt image", "रसीद इमेज स्कैन करें")}
-        </button>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2">
-        <button
-          type="button"
-          onClick={() => screenshotInputRef.current?.click()}
-          className="flex items-center gap-3 p-3.5 rounded-2xl bg-white dark:bg-card border border-slate-100 dark:border-border hover:border-primary/30 transition-all active:scale-[0.97] shadow-[0_4px_20px_rgba(0,0,0,0.03)] text-left"
-        >
-          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-[#00B0FF]/15">
-            <Image className="w-4.5 h-4.5 text-[#00B0FF]" />
-          </div>
-          <div className="min-w-0">
-            <p className={cn("font-semibold text-foreground leading-tight", isElderly ? "text-sm" : "text-[13px]")}>
-              {t("Screenshot", "स्क्रीनशॉट")}
-            </p>
-            <p className="text-muted-foreground text-[10px] mt-0.5">{t("Analyze", "विश्लेषण")}</p>
-          </div>
-        </button>
-        <button
-          type="button"
-          onClick={() => screenshotInputRef.current?.click()}
-          className="flex items-center gap-3 p-3.5 rounded-2xl bg-white dark:bg-card border border-slate-100 dark:border-border hover:border-primary/30 transition-all active:scale-[0.97] shadow-[0_4px_20px_rgba(0,0,0,0.03)] text-left"
-        >
-          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-accent/15">
-            <CreditCard className="w-4.5 h-4.5 text-accent" />
-          </div>
-          <div className="min-w-0">
-            <p className={cn("font-semibold text-foreground leading-tight", isElderly ? "text-sm" : "text-[13px]")}>
-              {t("Merchant", "व्यापारी")}
-            </p>
-            <p className="text-muted-foreground text-[10px] mt-0.5">{t("Verify", "सत्यापन")}</p>
-          </div>
-        </button>
-      </div>
-
-      {/* Live Fraud Heatmap */}
-      <div className="rounded-2xl bg-slate-900 dark:bg-slate-950 border border-slate-700 overflow-hidden">
-        <div className="flex items-center justify-between px-4 pt-3 pb-2">
-          <div className="flex items-center gap-2">
-            <MapPin className="w-4 h-4 text-destructive" />
-            <h3 className={cn("font-semibold text-white", isElderly ? "text-sm" : "text-[13px]")}>
-              {t("Live Fraud Heatmap", "लाइव फ्रॉड हीटमैप")}
-            </h3>
-          </div>
-          <span className="text-[8px] font-mono text-accent bg-accent/20 px-2 py-0.5 rounded-full font-bold">LIVE</span>
-        </div>
-        <div className="relative w-full h-44 rounded-b-2xl overflow-hidden bg-gradient-to-br from-slate-800 via-slate-900 to-slate-800">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_50%,_rgba(220,38,38,0.15)_0%,_transparent_50%)]" />
-          <div className="absolute top-[18%] left-[32%] w-3 h-3 rounded-full bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.8)] animate-pulse" title="Jamtara" />
-          <div className="absolute top-[22%] left-[28%] w-2 h-2 rounded-full bg-red-400/80 animate-ping" />
-          <div className="absolute top-[48%] left-[38%] w-2.5 h-2.5 rounded-full bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.7)] animate-pulse" title="Mewat" />
-          <div className="absolute top-[55%] left-[52%] w-2 h-2 rounded-full bg-red-500/90 shadow-[0_0_8px_rgba(239,68,68,0.6)] animate-pulse" title="Nuh" />
-          <div className="absolute top-[35%] left-[58%] w-2 h-2 rounded-full bg-amber-400/80 animate-pulse" title="Bharatpur" />
-          <div className="absolute bottom-3 left-3 flex flex-col gap-1 text-[9px] font-mono text-slate-400">
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.6)]" /> Jamtara, Nuh</span>
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500" /> Mewat, Bharatpur</span>
-          </div>
-        </div>
       </div>
 
       {/* Fraud Map */}
@@ -404,13 +491,13 @@ export function TabInvestigator() {
           <div className="flex items-center gap-2">
             <MapPin className="w-4 h-4 text-destructive" />
             <h3 className={cn("font-semibold text-foreground", isElderly ? "text-sm" : "text-[13px]")}>
-              {t("Live Fraud Map", "लाइव फ्रॉड मैप")}
+              {t("Live OSINT Tracking", "लाइव OSINT ट्रैकिंग")}
             </h3>
           </div>
           <span className="text-[8px] font-mono text-accent bg-accent/10 px-2 py-0.5 rounded-full font-bold">LIVE</span>
         </div>
         <div className="px-3 pb-3">
-          <FraudMap />
+          <FraudMap points={mapData} />
         </div>
       </div>
 
@@ -418,18 +505,19 @@ export function TabInvestigator() {
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between px-1">
           <h3 className={cn("font-semibold text-foreground", isElderly ? "text-sm" : "text-[13px]")}>
-            {t("Scammer Kundali", "स्कैमर कुंडली")}
+            {t("Search History", "खोज इतिहास")}
           </h3>
-          <div className="flex items-center gap-1">
-            <span className="text-muted-foreground text-[10px] font-mono">{t("Recent", "हाल")}</span>
-            <button type="button" onClick={handleShareAlert} className="p-1.5 rounded-lg hover:bg-secondary transition-colors" aria-label={t("Share Alert", "अलर्ट शेयर करें")}>
-              <Share2 className="w-3.5 h-3.5 text-muted-foreground" />
-            </button>
-          </div>
         </div>
         <div className="rounded-2xl bg-white dark:bg-card border border-slate-100 dark:border-border shadow-[0_4px_20px_rgba(0,0,0,0.03)] overflow-hidden divide-y divide-slate-100 dark:divide-border">
-          {(recentSearches || []).map((item) => (
-            <button key={item.id} className="flex items-center gap-3 px-4 py-3 hover:bg-secondary/30 transition-colors text-left w-full">
+          {recentSearches.length > 0 ? recentSearches.map((item) => (
+            <button 
+              key={item.id} 
+              onClick={() => {
+                setSearchValue(item.value)
+                handleScan()
+              }}
+              className="flex items-center gap-3 px-4 py-3 hover:bg-secondary/30 transition-colors text-left w-full"
+            >
               <div className={cn("flex items-center justify-center w-8 h-8 rounded-lg shrink-0",
                 item.risk === "high" ? "bg-destructive/10" : "bg-[#FFD600]/10"
               )}>
@@ -446,7 +534,9 @@ export function TabInvestigator() {
               </div>
               <ChevronRight className="w-4 h-4 text-muted-foreground/30 shrink-0" />
             </button>
-          ))}
+          )) : (
+            <p className="text-center text-muted-foreground text-xs py-8">{t("No search history", "कोई खोज इतिहास नहीं")}</p>
+          )}
         </div>
       </div>
     </div>

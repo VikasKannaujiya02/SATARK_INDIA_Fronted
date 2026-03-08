@@ -24,83 +24,335 @@ import {
   MapPin,
   AlertTriangle,
   Power,
+  Globe,
+  Lock,
+  User,
+  Shield,
+  Activity,
+  Zap,
+  Terminal,
+  Save,
+  Camera,
+  LogOut,
+  RefreshCcw,
 } from "lucide-react"
 import { useApp } from "./app-context"
 import { Switch } from "@/components/ui/switch"
 import { cn } from "@/lib/utils"
+import toast from "react-hot-toast"
+import Link from "next/link"
 
-const USER_PHONE = "6388853440"
+const USER_PHONE_KEY = "satark_user_phone"
+const USER_NAME_KEY = "satark_user_name"
+const USER_AVATAR_KEY = "satark_user_avatar"
 
 export function TabTrust() {
-  const { t, isElderly, isDark, toggleDark } = useApp()
+  const { t, isElderly, isDark, toggleDark, language, setLanguage } = useApp()
   const [privacyScreen, setPrivacyScreen] = useState(false)
   const [cacheCleared, setCacheCleared] = useState(false)
   const [rateClicked, setRateClicked] = useState(false)
   const [trustScore, setTrustScore] = useState(100)
   const [reportsFiled, setReportsFiled] = useState(0)
   const [currentStreak, setCurrentStreak] = useState(0)
+  const [isKycVerified, setIsKycVerified] = useState(false)
+  const [isInsured, setIsInsured] = useState(false)
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true)
+  const [isMaintenance, setIsMaintenance] = useState(false)
+
+  // Profile State
+  const [userName, setUserName] = useState("Vikas Kannaujiya")
+  const [userPhone, setUserPhone] = useState("6388853440")
+  const [userAvatar, setUserAvatar] = useState("")
+  const [isEditingProfile, setIsEditingProfile] = useState(false)
+
+  // System State
+  const [appVersion, setAppVersion] = useState("1.0.0")
+  const [storageUsed, setStorageUsed] = useState("0MB")
+
+  // Admin State
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false)
+  const [adminPassword, setAdminPassword] = useState("")
+  const [adminTab, setAdminTab] = useState<"health" | "threats" | "controls">("health")
+  const [maintenanceMode, setMaintenanceMode] = useState(false)
+  const [strictRateLimit, setStrictRateLimit] = useState(true)
 
   useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const res = await api.get("/api/users/profile")
+        if (res.data) {
+          setUserName(res.data.name || "User")
+          setUserPhone(res.data.phoneNumber || "")
+          setUserAvatar(res.data.avatar || "")
+          setTrustScore(res.data.trustScore ?? 100)
+          setCurrentStreak(res.data.currentStreak ?? 0)
+          setReportsFiled(res.data.reportsFiled ?? 0)
+          setIsKycVerified(res.data.isKycVerified ?? false)
+          setIsInsured(res.data.isInsured ?? false)
+          
+          if (res.data.settings) {
+            setLanguage(res.data.settings.language || 'en')
+            setNotificationsEnabled(res.data.settings.notifications ?? true)
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch profile:", err)
+        // Only use localStorage if the initial API call fails
+        const savedName = localStorage.getItem(USER_NAME_KEY)
+        const savedPhone = localStorage.getItem(USER_PHONE_KEY)
+        const savedAvatar = localStorage.getItem(USER_AVATAR_KEY)
+        if (savedName) setUserName(savedName)
+        if (savedPhone) setUserPhone(savedPhone)
+        if (savedAvatar) setUserAvatar(savedAvatar)
+      }
+    }
+
+    const fetchSystemInfo = async () => {
+      try {
+        const res = await api.get("/api/system/status")
+        setAppVersion(res.data.version)
+        setIsMaintenance(res.data.killSwitch)
+      } catch (e) {}
+      
+      try {
+        const res = await api.get("/api/user/storage-usage")
+        setStorageUsed(res.data.size)
+      } catch (e) {
+        const reports = localStorage.getItem("satark_reports")
+        const size = reports ? (reports.length / 1024).toFixed(1) : "0"
+        setStorageUsed(`${size}KB`)
+      }
+    }
+
+    fetchProfile()
+    fetchSystemInfo()
+
     const doDailyCheckin = async () => {
       try {
-        const res = await api.post("/api/trust/daily-checkin", { phone: USER_PHONE })
+        const res = await api.post("/api/trust/daily-checkin", { phone: userPhone })
         setTrustScore(res.data?.trustScore ?? 100)
         setCurrentStreak(res.data?.currentStreak ?? 0)
         if (res.data?.reportsFiled !== undefined) setReportsFiled(res.data.reportsFiled)
       } catch (err) {
-        console.error("Daily check-in failed (backend may be offline):", err)
-        try {
-          const fallback = await api.get(`/api/user/stats/${USER_PHONE}`)
-          setTrustScore(fallback.data?.trustScore ?? 100)
-          setReportsFiled(fallback.data?.reportsFiled ?? 0)
-          setCurrentStreak(fallback.data?.currentStreak ?? 0)
-        } catch (e) {
-          console.error("Fallback stats failed:", e)
-        }
+        console.error("Daily check-in failed:", err)
       }
     }
-    doDailyCheckin()
-  }, [])
+    if (userPhone) doDailyCheckin()
+  }, [userPhone, setLanguage])
+
+  const handleSaveProfile = async () => {
+    const toastId = toast.loading(t("Updating profile...", "प्रोफ़ाइल अपडेट कर रहे हैं..."))
+    try {
+      await api.put("/api/users/profile", { name: userName })
+      
+      // Update local storage too for fallback consistency
+      localStorage.setItem(USER_NAME_KEY, userName)
+      
+      setIsEditingProfile(false)
+      toast.success(t("Profile updated successfully", "प्रोफ़ाइल सफलतापूर्वक अपडेट की गई"), { id: toastId })
+    } catch (err) {
+      console.error("Profile update failed:", err)
+      toast.error(t("Failed to update profile", "प्रोफ़ाइल अपडेट करने में विफल"), { id: toastId })
+    }
+  }
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      const formData = new FormData()
+      formData.append('avatar', file)
+
+      const toastId = toast.loading(t("Uploading photo...", "फोटो अपलोड कर रहे हैं..."))
+      try {
+        const res = await api.post("/api/user/upload-avatar", formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        })
+        const newAvatar = res.data.avatar
+        setUserAvatar(newAvatar)
+        
+        // Update local storage for fallback consistency
+        localStorage.setItem(USER_AVATAR_KEY, newAvatar)
+        
+        toast.success(t("Photo updated", "फोटो अपडेट किया गया"), { id: toastId })
+      } catch (err) {
+        toast.error(t("Upload failed", "अपलोड विफल"), { id: toastId })
+      }
+    }
+  }
+
+  const handleInsurancePayment = async () => {
+    const toastId = toast.loading(t("Initiating secure checkout...", "सुरक्षित चेकआउट शुरू कर रहे हैं..."))
+    try {
+      const { data: order } = await api.post("/api/insurance/pay")
+      
+      const options = {
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_placeholder",
+        amount: order.amount,
+        currency: order.currency,
+        name: "Satark India Insurance",
+        description: "1 Year Cyber Fraud Coverage",
+        order_id: order.id,
+        handler: async (response: any) => {
+          try {
+            const verifyRes = await api.post("/api/insurance/verify", response)
+            if (verifyRes.data.success) {
+              setIsInsured(true)
+              toast.success(t("Insurance activated successfully!", "बीमा सफलतापूर्वक सक्रिय हो गया!"))
+            }
+          } catch (e) {
+            toast.error(t("Verification failed", "सत्यापन विफल"))
+          }
+        },
+        prefill: {
+          name: userName,
+          contact: userPhone
+        },
+        theme: {
+          color: "#3b82f6"
+        }
+      }
+
+      const rzp = new (window as any).Razorpay(options)
+      rzp.open()
+      toast.dismiss(toastId)
+    } catch (err) {
+      toast.error(t("Payment failed to start", "भुगतान शुरू करने में विफल"), { id: toastId })
+    }
+  }
+
+  const handleLanguageChange = async (lang: "en" | "hi") => {
+    setLanguage(lang)
+    try {
+      await api.put("/api/user/settings", { language: lang })
+      toast.success(t(`Language changed to ${lang === 'en' ? 'English' : 'Hindi'}`, `भाषा ${lang === 'hi' ? 'हिंदी' : 'अंग्रेजी'} में बदल दी गई`))
+    } catch (e) {}
+  }
+
+  const handleToggleNotifications = async (val: boolean) => {
+    setNotificationsEnabled(val)
+    try {
+      await api.put("/api/user/settings", { notifications: val })
+      toast.success(val ? t("Notifications Enabled", "सूचनाएं सक्षम") : t("Notifications Disabled", "सूचनाएं अक्षम"))
+    } catch (e) {}
+  }
+
+  const handleCheckUpdate = async () => {
+    const toastId = toast.loading(t("Checking for updates...", "अपडेट की जांच हो रही है..."))
+    try {
+      const res = await api.get("/api/system/status")
+      if (res.data.version !== appVersion) {
+        toast.success(t(`New update available: ${res.data.version}`, `नया अपडेट उपलब्ध: ${res.data.version}`), { id: toastId })
+      } else {
+        toast.success(t("You are on the latest version", "आप नवीनतम संस्करण पर हैं"), { id: toastId })
+      }
+    } catch (e) {
+      toast.error(t("Update check failed", "अपडेट जांच विफल"), { id: toastId })
+    }
+  }
+
+  const handleLogout = () => {
+    localStorage.removeItem("satark_token")
+    localStorage.removeItem(USER_PHONE_KEY)
+    window.location.href = "/login"
+  }
+
+  const handleAdminLogin = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (adminPassword === "satarkadmin") {
+      setIsAdminLoggedIn(true)
+      toast.success(t("Admin Login Successful", "एडमिन लॉगिन सफल"))
+    } else {
+      toast.error(t("Invalid Password", "गलत पासवर्ड"))
+    }
+    setAdminPassword("")
+  }
+
+  if (isMaintenance) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center space-y-6">
+        <div className="w-20 h-20 rounded-3xl bg-amber-500/10 flex items-center justify-center border border-amber-500/20">
+          <AlertTriangle className="w-10 h-10 text-amber-500" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-xl font-bold text-foreground">{t("Maintenance Mode", "रखरखाव मोड")}</h2>
+          <p className="text-sm text-muted-foreground">
+            {t("Satark India is under scheduled maintenance. We'll be back shortly.", "सतर्क इंडिया निर्धारित रखरखाव के अधीन है। हम जल्द ही वापस आएंगे।")}
+          </p>
+        </div>
+        <button 
+          onClick={() => window.location.reload()}
+          className="px-6 py-2.5 bg-primary text-primary-foreground font-bold rounded-xl shadow-lg shadow-primary/20"
+        >
+          {t("Try Again", "पुनः प्रयास करें")}
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col gap-5 p-4 pb-6">
       {/* USER PROFILE CARD - TOP */}
       <div className="rounded-3xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 p-5 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
         <div className="flex items-center gap-4 mb-4">
-          <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary/80 shadow-lg shadow-primary/20 text-white font-bold text-lg">
-            VK
+          <div className="relative">
+            <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary/80 shadow-lg shadow-primary/20 text-white font-bold text-lg overflow-hidden">
+              {userAvatar ? (
+                <img src={userAvatar} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                userName.split(" ").map(n => n[0]).join("")
+              )}
+            </div>
+            <label className="absolute -bottom-1 -right-1 p-1.5 rounded-lg bg-secondary border border-border cursor-pointer hover:bg-secondary/80 transition-colors">
+              <Camera className="w-3 h-3 text-foreground" />
+              <input type="file" className="hidden" accept="image/*" onChange={handleAvatarUpload} />
+            </label>
           </div>
           <div className="flex-1">
-            <p className={cn("font-bold text-foreground", isElderly ? "text-lg" : "text-base")}>
-              Vikas Kannaujiya
-            </p>
-            <p className={cn("text-muted-foreground mt-1", isElderly ? "text-sm" : "text-xs")}>
-              +91 6388853440
-            </p>
+            {isEditingProfile ? (
+              <div className="space-y-2">
+                <input 
+                  value={userName} 
+                  onChange={e => setUserName(e.target.value)}
+                  className="w-full bg-secondary/50 border border-border rounded-lg px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+                <input 
+                  value={userPhone} 
+                  onChange={e => setUserPhone(e.target.value)}
+                  className="w-full bg-secondary/50 border border-border rounded-lg px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+                <button onClick={handleSaveProfile} className="flex items-center gap-1.5 text-primary text-[10px] font-bold uppercase tracking-wider">
+                  <Save className="w-3 h-3" /> {t("Save Changes", "परिवर्तन सहेजें")}
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <p className={cn("font-bold text-foreground", isElderly ? "text-lg" : "text-base")}>
+                    {userName}
+                  </p>
+                  <button onClick={() => setIsEditingProfile(true)} className="p-1.5 rounded-lg hover:bg-primary/10 transition-colors">
+                    <User className="w-3.5 h-3.5 text-primary" />
+                  </button>
+                </div>
+                <p className={cn("text-muted-foreground mt-1", isElderly ? "text-sm" : "text-xs")}>
+                  {userPhone}
+                </p>
+              </>
+            )}
             <div className="flex items-center gap-2 mt-2 flex-wrap">
-              <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-accent/20 border border-accent/30">
-                <CheckCircle className="w-3.5 h-3.5 text-accent" fill="currentColor" />
-                <span className={cn("font-semibold text-accent", isElderly ? "text-xs" : "text-[10px]")}>
-                  KYC Verified
+              <div className={cn(
+                "flex items-center gap-1 px-2.5 py-1 rounded-full border transition-colors",
+                isKycVerified ? "bg-accent/20 border-accent/30" : "bg-amber-500/10 border-amber-500/20"
+              )}>
+                <CheckCircle className={cn("w-3.5 h-3.5", isKycVerified ? "text-accent" : "text-amber-500")} fill="currentColor" />
+                <span className={cn("font-semibold", isKycVerified ? "text-accent" : "text-amber-500", isElderly ? "text-xs" : "text-[10px]")}>
+                  {isKycVerified ? t("KYC Verified ✅", "KYC सत्यापित ✅") : t("KYC Pending ⏳", "KYC लंबित ⏳")}
                 </span>
               </div>
               <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20">
                 <ShieldCheck className="w-3.5 h-3.5 text-primary" />
                 <span className={cn("font-mono font-bold text-primary", isElderly ? "text-xs" : "text-[10px]")}>
                   Trust {trustScore}
-                </span>
-              </div>
-              {currentStreak > 0 && (
-                <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/20 border border-amber-500/30">
-                  <span className="text-base">🔥</span>
-                  <span className={cn("font-mono font-bold text-amber-600 dark:text-amber-400", isElderly ? "text-xs" : "text-[10px]")}>
-                    {currentStreak} {t("Day Streak", "दिन स्ट्रीक")}
-                  </span>
-                </div>
-              )}
-              <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-secondary border border-border">
-                <span className={cn("font-mono font-bold text-foreground", isElderly ? "text-xs" : "text-[10px]")}>
-                  {reportsFiled} {t("Reports", "रिपोर्ट")}
                 </span>
               </div>
             </div>
@@ -110,14 +362,50 @@ export function TabTrust() {
         <div>
           <div className="flex items-center justify-between mb-2">
             <span className={cn("font-medium text-foreground text-[10px]", isElderly ? "text-xs" : "text-[9px]")}>
-              Profile Completion
+              {t("Profile Completion", "प्रोफ़ाइल पूर्णता")}
             </span>
             <span className={cn("font-bold text-primary text-[10px]", isElderly ? "text-xs" : "text-[9px]")}>
-              80%
+              85%
             </span>
           </div>
           <div className="w-full h-1.5 rounded-full bg-secondary overflow-hidden">
-            <div className="h-full w-4/5 bg-gradient-to-r from-primary to-primary/80 rounded-full" />
+            <div className="h-full w-[85%] bg-gradient-to-r from-primary to-primary/80 rounded-full" />
+          </div>
+        </div>
+      </div>
+
+      {/* Language Selector */}
+      <div className="flex flex-col gap-1.5">
+        <h3 className={cn("font-bold text-muted-foreground uppercase tracking-wider px-1 mb-1", isElderly ? "text-xs" : "text-[10px]")}>
+          {t("PREFERENCES", "प्राथमिकताएं")}
+        </h3>
+        <div className="flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-card border border-slate-100 dark:border-border shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-secondary shrink-0">
+              <Globe className={cn("text-muted-foreground", isElderly ? "w-5 h-5" : "w-4 h-4")} />
+            </div>
+            <div>
+              <p className={cn("font-medium text-foreground", isElderly ? "text-sm" : "text-xs")}>
+                {t("App Language", "ऐप की भाषा")}
+              </p>
+              <p className={cn("text-muted-foreground", isElderly ? "text-[11px]" : "text-[9px]")}>
+                {language === "en" ? "English" : "हिंदी (Hindi)"}
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-1 bg-secondary/50 p-1 rounded-xl border border-border">
+            <button 
+              onClick={() => handleLanguageChange("en")}
+              className={cn("px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all", language === "en" ? "bg-white dark:bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground")}
+            >
+              EN
+            </button>
+            <button 
+              onClick={() => handleLanguageChange("hi")}
+              className={cn("px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all", language === "hi" ? "bg-white dark:bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground")}
+            >
+              हिन्दी
+            </button>
           </div>
         </div>
       </div>
@@ -145,7 +433,12 @@ export function TabTrust() {
 
       {/* Rate Us Card */}
       <button
-        onClick={() => setRateClicked(true)}
+        onClick={() => {
+          setRateClicked(true)
+          if (typeof window !== "undefined") {
+            window.open("https://play.google.com/store/apps/details?id=com.satark.india", "_blank")
+          }
+        }}
         className={cn(
           "flex items-center gap-4 p-5 rounded-2xl border transition-all active:scale-[0.97]",
           rateClicked
@@ -204,14 +497,17 @@ export function TabTrust() {
                 {t("Storage & Cache", "स्टोरेज और कैश")}
               </p>
               <p className={cn("text-muted-foreground", isElderly ? "text-[11px]" : "text-[9px]")}>
-                {t("Cached data using 14MB", "उपयोग किए गए कैश डेटा 14MB")}
+                {t(`Cached data using ${storageUsed}`, `उपयोग किए गए कैश डेटा ${storageUsed}`)}
               </p>
             </div>
           </div>
           <button
             onClick={() => {
               setCacheCleared(true)
+              localStorage.removeItem("satark_reports")
+              setStorageUsed("0KB")
               setTimeout(() => setCacheCleared(false), 2000)
+              toast.success(t("Cache Cleared", "कैश साफ हो गया"))
             }}
             className={cn(
               "text-accent text-[9px] font-mono font-bold px-2 py-1 rounded-md transition-colors active:scale-[0.95]",
@@ -224,21 +520,40 @@ export function TabTrust() {
       </div>
 
       {/* Privacy Screen Toggle */}
-      <div className="flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-card border border-slate-100 dark:border-border shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-secondary shrink-0">
-            <Eye className={cn("text-muted-foreground", isElderly ? "w-5 h-5" : "w-4 h-4")} />
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-card border border-slate-100 dark:border-border shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-secondary shrink-0">
+              <Activity className={cn("text-muted-foreground", isElderly ? "w-5 h-5" : "w-4 h-4")} />
+            </div>
+            <div>
+              <p className={cn("font-medium text-foreground", isElderly ? "text-sm" : "text-xs")}>
+                {t("Push Notifications", "पुश सूचनाएं")}
+              </p>
+              <p className={cn("text-muted-foreground", isElderly ? "text-[11px]" : "text-[9px]")}>
+                {notificationsEnabled ? t("Enabled", "सक्षम") : t("Disabled", "अक्षम")}
+              </p>
+            </div>
           </div>
-          <div>
-            <p className={cn("font-medium text-foreground", isElderly ? "text-sm" : "text-xs")}>
-              {t("Privacy Screen", "गोपनीयता स्क्रीन")}
-            </p>
-            <p className={cn("text-muted-foreground", isElderly ? "text-[11px]" : "text-[9px]")}>
-              {t("Blur app in recent tasks", "हाल के कार्यों में ऐप को धुंधला करें")}
-            </p>
-          </div>
+          <Switch checked={notificationsEnabled} onCheckedChange={handleToggleNotifications} />
         </div>
-        <Switch checked={privacyScreen} onCheckedChange={setPrivacyScreen} aria-label={t("Toggle privacy screen", "गोपनीयता स्क्रीन टॉगल करें")} />
+
+        <div className="flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-card border border-slate-100 dark:border-border shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-secondary shrink-0">
+              <Eye className={cn("text-muted-foreground", isElderly ? "w-5 h-5" : "w-4 h-4")} />
+            </div>
+            <div>
+              <p className={cn("font-medium text-foreground", isElderly ? "text-sm" : "text-xs")}>
+                {t("Privacy Screen", "गोपनीयता स्क्रीन")}
+              </p>
+              <p className={cn("text-muted-foreground", isElderly ? "text-[11px]" : "text-[9px]")}>
+                {t("Blur app in recent tasks", "हाल के कार्यों में ऐप को धुंधला करें")}
+              </p>
+            </div>
+          </div>
+          <Switch checked={privacyScreen} onCheckedChange={setPrivacyScreen} aria-label={t("Toggle privacy screen", "गोपनीयता स्क्रीन टॉगल करें")} />
+        </div>
       </div>
 
       {/* Legal Section */}
@@ -249,74 +564,181 @@ export function TabTrust() {
 
         <div className="flex flex-col rounded-2xl bg-white dark:bg-card border border-slate-100 dark:border-border overflow-hidden divide-y divide-slate-100 dark:divide-border shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
           {[
-            { icon: FileText, titleEn: "Privacy Policy", titleHi: "गोपनीयता नीति" },
-            { icon: ScrollText, titleEn: "Data Safety Form", titleHi: "डेटा सुरक्षा फॉर्म" },
-            { icon: Scale, titleEn: "Terms of Service", titleHi: "सेवा की शर्तें" },
+            { icon: FileText, titleEn: "Privacy Policy", titleHi: "गोपनीयता नीति", href: "/privacy" },
+            { icon: ScrollText, titleEn: "Data Safety Form", titleHi: "डेटा सुरक्षा फॉर्म", href: "/privacy" },
+            { icon: Scale, titleEn: "Terms of Service", titleHi: "सेवा की शर्तें", href: "/terms" },
+            { icon: RefreshCcw, titleEn: "Check for Updates", titleHi: "अपडेट की जांच करें", onClick: handleCheckUpdate },
           ].map((item) => {
             const Icon = item.icon
-            return (
-              <button
-                key={item.titleEn}
-                className="flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 dark:hover:bg-secondary/50 transition-colors text-left active:scale-[0.97]"
-              >
+            const content = (
+              <div className="flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 dark:hover:bg-secondary/50 transition-colors text-left active:scale-[0.97] w-full">
                 <Icon className={cn("text-muted-foreground shrink-0", isElderly ? "w-4.5 h-4.5" : "w-4 h-4")} />
                 <span className={cn("flex-1 font-medium text-foreground", isElderly ? "text-sm" : "text-xs")}>
                   {t(item.titleEn, item.titleHi)}
+                  {item.titleEn === "Check for Updates" && (
+                    <span className="ml-2 text-[10px] text-muted-foreground font-mono">v{appVersion}</span>
+                  )}
                 </span>
                 <ChevronRight className="w-4 h-4 text-muted-foreground/40" />
+              </div>
+            )
+            return item.href ? (
+              <Link key={item.titleEn} href={item.href}>
+                {content}
+              </Link>
+            ) : (
+              <button key={item.titleEn} onClick={item.onClick} className="w-full">
+                {content}
               </button>
             )
           })}
+          <button 
+            onClick={handleLogout}
+            className="flex items-center gap-3 px-4 py-3.5 hover:bg-destructive/10 transition-colors text-left active:scale-[0.97] w-full"
+          >
+            <LogOut className={cn("text-destructive shrink-0", isElderly ? "w-4.5 h-4.5" : "w-4 h-4")} />
+            <span className={cn("flex-1 font-bold text-destructive", isElderly ? "text-sm" : "text-xs")}>
+              {t("Logout", "लॉग आउट")}
+            </span>
+          </button>
         </div>
       </div>
 
-      {/* Danger: Delete Account */}
-      <button className="flex items-center gap-3 p-4 rounded-2xl bg-destructive/10 border border-destructive/20 hover:bg-destructive/15 transition-colors text-left active:scale-[0.97]">
-        <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-destructive/15 shrink-0">
-          <Trash2 className={cn("text-destructive", isElderly ? "w-5 h-5" : "w-4 h-4")} />
-        </div>
-        <div>
-          <p className={cn("font-bold text-destructive", isElderly ? "text-sm" : "text-xs")}>
-            {t("Delete Account", "अकाउंट हटाएं")}
-          </p>
-          <p className={cn("text-muted-foreground", isElderly ? "text-[11px]" : "text-[9px]")}>
-            {t("Permanently delete all data", "सभी डेटा स्थायी रूप से हटाएं")}
-          </p>
-        </div>
-        <ChevronRight className="w-4 h-4 text-destructive/50 ml-auto" />
-      </button>
+      {/* 👑 ADMIN DASHBOARD SECTION */}
+      <div className="flex flex-col gap-1.5">
+        <h3 className={cn("font-bold text-muted-foreground uppercase tracking-wider px-1 mb-1", isElderly ? "text-xs" : "text-[10px]")}>
+          {t("ADMINISTRATION", "प्रशासन")}
+        </h3>
 
-      {/* Version Footer */}
-      <div className="flex items-center justify-center py-4 text-center">
-        <p className="text-muted-foreground text-[9px] font-mono">
-          {t("v1.0.4 (Build 420) • Made in India 🇮🇳", "v1.0.4 (बिल्ड 420) • भारत में बनाया गया 🇮🇳")}
-        </p>
-      </div>
+        {!isAdminLoggedIn ? (
+          <form onSubmit={handleAdminLogin} className="rounded-3xl bg-slate-900 border border-slate-800 p-5 shadow-xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20">
+                <Terminal className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-white font-bold text-sm">Admin Access</p>
+                <p className="text-slate-500 text-[10px]">Restricted to Satark Officials</p>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <input 
+                type="password"
+                placeholder="Enter Admin Password"
+                value={adminPassword}
+                onChange={e => setAdminPassword(e.target.value)}
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+              <button type="submit" className="w-full py-3 bg-primary text-slate-950 font-bold rounded-xl hover:bg-primary/90 transition-all">
+                Login to Dashboard
+              </button>
+            </div>
+          </form>
+        ) : (
+          <div className="rounded-3xl bg-slate-900 border border-slate-800 overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
+            {/* Admin Header */}
+            <div className="bg-slate-800/50 p-4 border-b border-slate-700 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-white font-bold text-xs uppercase tracking-widest">Admin Dashboard</span>
+              </div>
+              <button onClick={() => setIsAdminLoggedIn(false)} className="p-1.5 rounded-lg hover:bg-destructive/10 text-destructive transition-colors">
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
 
-      {/* 👑 ADMIN BOSS MODE - BOTTOM */}
-      <div className="rounded-2xl bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 p-5 shadow-[0_8px_32px_rgba(0,0,0,0.2)]">
-        <div className="flex items-center gap-2 mb-3">
-          <span className="text-lg">👑</span>
-          <h3 className="font-bold text-white text-sm">ADMIN BOSS MODE</h3>
-        </div>
-        <div className="grid grid-cols-2 gap-3 mb-3">
-          <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700">
-            <p className="text-white/50 text-[9px] font-mono">Active Users</p>
-            <p className="text-white font-bold mt-1">24,592</p>
+            {/* Admin Tabs */}
+            <div className="flex border-b border-slate-700 bg-slate-800/30">
+              {[
+                { id: "health", icon: Activity, label: "Health" },
+                { id: "threats", icon: Zap, label: "Threats" },
+                { id: "controls", icon: Shield, label: "Controls" }
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setAdminTab(tab.id as any)}
+                  className={cn(
+                    "flex-1 flex items-center justify-center gap-2 py-3 text-[10px] font-bold uppercase transition-all",
+                    adminTab === tab.id ? "text-primary border-b-2 border-primary bg-primary/5" : "text-slate-500 hover:text-slate-300"
+                  )}
+                >
+                  <tab.icon className="w-3.5 h-3.5" />
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Admin Content */}
+            <div className="p-5">
+              {adminTab === "health" && (
+                <div className="space-y-4 animate-in fade-in duration-300">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-slate-800/50 rounded-2xl p-4 border border-slate-700">
+                      <p className="text-slate-500 text-[9px] font-mono mb-1">System Uptime</p>
+                      <p className="text-white font-bold text-lg">99.98%</p>
+                    </div>
+                    <div className="bg-slate-800/50 rounded-2xl p-4 border border-slate-700">
+                      <p className="text-slate-500 text-[9px] font-mono mb-1">API Latency</p>
+                      <p className="text-emerald-500 font-bold text-lg">42ms</p>
+                    </div>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-slate-800/30 border border-slate-700 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <RefreshCcw className="w-4 h-4 text-primary animate-spin-slow" />
+                      <span className="text-white text-xs">Auto-scaling Active</span>
+                    </div>
+                    <span className="text-slate-500 text-[10px] font-mono">NODE_IN_04</span>
+                  </div>
+                </div>
+              )}
+
+              {adminTab === "threats" && (
+                <div className="space-y-4 animate-in fade-in duration-300">
+                  <div className="p-4 rounded-2xl bg-slate-800/50 border border-slate-700">
+                    <p className="text-slate-500 text-[9px] font-mono mb-3">Live Threat Intel (Masked)</p>
+                    <div className="space-y-3">
+                      {[
+                        { id: "USR_***92A", score: "92%", status: "Flagged" },
+                        { id: "USR_***44B", score: "14%", status: "Safe" },
+                        { id: "USR_***71C", score: "88%", status: "Flagged" }
+                      ].map(row => (
+                        <div key={row.id} className="flex items-center justify-between text-[11px] font-mono">
+                          <span className="text-white/70">{row.id}</span>
+                          <span className="text-primary font-bold">{row.score}</span>
+                          <span className={cn(row.status === "Flagged" ? "text-destructive" : "text-emerald-500")}>{row.status}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="bg-primary/10 border border-primary/20 rounded-2xl p-4 flex items-center justify-between">
+                    <span className="text-primary font-bold text-xs uppercase">Total Scams Reported</span>
+                    <span className="text-white font-black text-xl">1,245</span>
+                  </div>
+                </div>
+              )}
+
+              {adminTab === "controls" && (
+                <div className="space-y-3 animate-in fade-in duration-300">
+                  <div className="flex items-center justify-between p-4 bg-slate-800/50 rounded-2xl border border-slate-700">
+                    <div className="flex items-center gap-3">
+                      <Power className="w-4 h-4 text-slate-400" />
+                      <span className="text-white text-xs">Maintenance Mode</span>
+                    </div>
+                    <Switch checked={maintenanceMode} onCheckedChange={setMaintenanceMode} />
+                  </div>
+                  <div className="flex items-center justify-between p-4 bg-slate-800/50 rounded-2xl border border-slate-700">
+                    <div className="flex items-center gap-3">
+                      <Shield className="w-4 h-4 text-slate-400" />
+                      <span className="text-white text-xs">Strict Rate Limiting</span>
+                    </div>
+                    <Switch checked={strictRateLimit} onCheckedChange={setStrictRateLimit} />
+                  </div>
+                  <p className="text-[9px] text-slate-600 italic px-2">Changes are applied globally to all production clusters immediately.</p>
+                </div>
+              )}
+            </div>
           </div>
-          <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700">
-            <p className="text-white/50 text-[9px] font-mono">Threats Blocked</p>
-            <p className="text-accent font-bold mt-1">1,204</p>
-          </div>
-        </div>
-        <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg border border-slate-700">
-          <span className="text-white/70 text-xs font-mono">System Kill Switch</span>
-          <Switch 
-            checked={false}
-            aria-label="System kill switch"
-            className="data-[state=checked]:bg-destructive"
-          />
-        </div>
+        )}
       </div>
     </div>
   )

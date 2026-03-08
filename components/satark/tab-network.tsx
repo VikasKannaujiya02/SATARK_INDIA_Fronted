@@ -19,11 +19,15 @@ import {
   Info,
   Database,
   Download,
+  ShieldCheck,
+  ArrowRight,
+  Zap,
 } from "lucide-react"
 import { useApp } from "./app-context"
 import { Switch } from "@/components/ui/switch"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
+import toast from "react-hot-toast"
 
 interface FamilyDevice {
   id: string
@@ -61,6 +65,7 @@ export function TabNetwork() {
   const [shared, setShared] = useState(false)
   const [voiceSOS, setVoiceSOS] = useState(false)
   const [whatsappConnected, setWhatsappConnected] = useState(false)
+  const [isInsured, setIsInsured] = useState(false)
 
   const [familyContacts, setFamilyContacts] = useState<FamilyContact[]>([])
   const [formName, setFormName] = useState("")
@@ -80,8 +85,49 @@ export function TabNetwork() {
         console.error("Failed to fetch family (backend may be offline):", err)
       }
     }
+    const fetchInsuranceStatus = async () => {
+      try {
+        const res = await api.get("/api/users/profile")
+        setIsInsured(res.data.isInsured)
+      } catch (e) {}
+    }
     fetchFamily()
+    fetchInsuranceStatus()
   }, [])
+
+  const handleInsurancePayment = async () => {
+    const toastId = toast.loading(t("Initiating secure checkout...", "सुरक्षित चेकआउट शुरू कर रहे हैं..."))
+    try {
+      const { data: order } = await api.post("/api/insurance/pay")
+      
+      const options = {
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_placeholder",
+        amount: order.amount,
+        currency: order.currency,
+        name: "Satark India Insurance",
+        description: "1 Year Cyber Fraud Coverage",
+        order_id: order.id,
+        handler: async (response: any) => {
+          try {
+            const verifyRes = await api.post("/api/insurance/verify", response)
+            if (verifyRes.data.success) {
+              setIsInsured(true)
+              toast.success(t("Insurance activated successfully!", "बीमा सफलतापूर्वक सक्रिय हो गया!"))
+            }
+          } catch (e) {
+            toast.error(t("Verification failed", "सत्यापन विफल"))
+          }
+        },
+        theme: { color: "#3b82f6" }
+      }
+
+      const rzp = new (window as any).Razorpay(options)
+      rzp.open()
+      toast.dismiss(toastId)
+    } catch (err) {
+      toast.error(t("Payment failed to start", "भुगतान शुरू करने में विफल"), { id: toastId })
+    }
+  }
 
   const handleOfflineSync = () => {
     setOfflineSyncSuccess(false)
@@ -236,6 +282,39 @@ export function TabNetwork() {
             <Download className="w-4 h-4" />
             {offlineSyncing ? t("Syncing...", "सिंक हो रहा...") : t("Sync Now", "अभी सिंक करें")}
           </button>
+        </div>
+      </div>
+
+      {/* Cyber Fraud Insurance Card */}
+      <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-emerald-500/20 via-emerald-500/10 to-transparent border border-emerald-500/30 p-5 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
+        <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full bg-emerald-500/20 blur-2xl" />
+        <div className="relative flex flex-col gap-4">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-emerald-500/30 shrink-0 shadow-lg shadow-emerald-500/10">
+              <ShieldCheck className={cn("text-emerald-500", isElderly ? "w-7 h-7" : "w-6 h-6")} />
+            </div>
+            <div className="flex-1">
+              <p className={cn("font-bold text-emerald-600 dark:text-emerald-400", isElderly ? "text-base" : "text-sm")}>
+                {t("Cyber Fraud Insurance", "साइबर धोखाधड़ी बीमा")}
+              </p>
+              <p className={cn("text-foreground/80 mt-1", isElderly ? "text-xs" : "text-[11px]")}>
+                {isInsured 
+                  ? t("Active: ₹5,00,000 Coverage", "सक्रिय: ₹5,00,000 कवरेज")
+                  : t("Protect your family up to ₹5 Lakhs", "अपने परिवार को ₹5 लाख तक सुरक्षित करें")}
+              </p>
+            </div>
+            {isInsured && <div className="px-2 py-1 rounded-lg bg-emerald-500 text-white text-[8px] font-black uppercase">ACTIVE</div>}
+          </div>
+          
+          {!isInsured && (
+            <button
+              onClick={handleInsurancePayment}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-emerald-500 text-white font-bold text-sm shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 transition-all active:scale-[0.98]"
+            >
+              <Zap className="w-4 h-4 fill-white" />
+              {t("Secure Now", "अभी सुरक्षित करें")}
+            </button>
+          )}
         </div>
       </div>
 

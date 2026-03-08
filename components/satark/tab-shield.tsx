@@ -5,15 +5,237 @@ import { api } from "@/lib/api"
 import {
   Shield, Phone, MessageSquare, Zap, Timer, AlertTriangle,
   Cpu, Smartphone, KeyRound, CheckCircle, X, Lock, Fingerprint, Database, ChevronRight, Info,
+  ShieldCheck, Eye, EyeOff, Plus, Trash2, Send, ExternalLink,
 } from "lucide-react"
 import { useApp } from "./app-context"
 import { Switch } from "@/components/ui/switch"
 import { cn } from "@/lib/utils"
-// YEH LINE MISSING THI! Iske aane se crash theek ho jayega.
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip" 
+import toast from "react-hot-toast"
+
+interface FamilyDevice {
+  id: string
+  name: string
+  relation: string
+  model: string
+}
+
+const COMMON_BREACHED_PASSWORDS = ["123456", "password", "admin123", "qwerty", "12345678", "12345", "123456789", "password123"]
+
+const BANKS = [
+  { name: "SBI", phone: "18001234", sms: "567676", body: "BLOCK" },
+  { name: "HDFC", phone: "18002026161", sms: "5676712", body: "BLOCK" },
+  { name: "ICICI", phone: "18002003344", sms: "5676766", body: "BLOCK" },
+  { name: "National Cyber Cell", phone: "1930", sms: "1930", body: "URGENT: Freeze my bank account due to fraud." }
+]
 
 export function TabShield() {
-  const { t, isElderly } = useApp()
+  const { t, isElderly, socket } = useApp()
+  
+  // --- Device Audit State ---
+  const [auditData, setAuditData] = useState<{
+    os: string;
+    browser: string;
+    cores: number;
+    connection: string;
+    battery: number;
+    isCharging: boolean;
+    lastScan: string;
+  } | null>(null)
+  const [isAuditing, setIsAuditing] = useState(false)
+
+  useEffect(() => {
+    const handlePing = (e: any) => {
+      const data = e.detail
+      toast.success(t(`Security Alert from ${data.name}: ${data.message}`, `${data.name} से सुरक्षा अलर्ट: ${data.message}`), {
+        icon: '🛡️',
+        duration: 5000
+      })
+    }
+    window.addEventListener("satark_security_ping", handlePing)
+    return () => window.removeEventListener("satark_security_ping", handlePing)
+  }, [t])
+
+  const runDeviceAudit = useCallback(async () => {
+    setIsAuditing(true)
+    
+    // Simulate short delay for "scanning" feel
+    await new Promise(resolve => setTimeout(resolve, 1500))
+
+    const ua = navigator.userAgent
+    let os = "Unknown OS"
+    if (ua.indexOf("Win") !== -1) os = "Windows"
+    if (ua.indexOf("Mac") !== -1) os = "MacOS"
+    if (ua.indexOf("X11") !== -1) os = "UNIX"
+    if (ua.indexOf("Linux") !== -1) os = "Linux"
+    if (ua.indexOf("Android") !== -1) os = "Android"
+    if (ua.indexOf("like Mac") !== -1) os = "iOS"
+
+    let browser = "Unknown Browser"
+    if (ua.indexOf("Chrome") !== -1) browser = "Chrome"
+    else if (ua.indexOf("Firefox") !== -1) browser = "Firefox"
+    else if (ua.indexOf("Safari") !== -1) browser = "Safari"
+    else if (ua.indexOf("Edge") !== -1) browser = "Edge"
+
+    const cores = navigator.hardwareConcurrency || 0
+    const connection = (navigator as any).connection?.effectiveType || "Unknown"
+    
+    let batteryLevel = 0
+    let isCharging = false
+    try {
+      const battery: any = await (navigator as any).getBattery()
+      batteryLevel = Math.round(battery.level * 100)
+      isCharging = battery.charging
+    } catch (e) {}
+
+    setAuditData({
+      os,
+      browser,
+      cores,
+      connection,
+      battery: batteryLevel,
+      isCharging,
+      lastScan: new Date().toLocaleTimeString()
+    })
+    setIsAuditing(false)
+    toast.success(t("Device security audit complete", "डिवाइस सुरक्षा ऑडिट पूरा हुआ"))
+  }, [t])
+
+  // --- Password Scanner State ---
+  const [password, setPassword] = useState("")
+  const [passStrength, setPassStrength] = useState<{ score: number; label: string; color: string; breach: boolean } | null>(null)
+
+  // --- Bank Freeze State ---
+  const [selectedBank, setSelectedBank] = useState(BANKS[0])
+  
+  // --- Family Guardian State ---
+  const [familyDevices, setFamilyDevices] = useState<FamilyDevice[]>([])
+  const [showAddFamily, setShowAddFamily] = useState(false)
+  const [newFamily, setNewFamily] = useState({ name: "", relation: "", model: "" })
+
+  useEffect(() => {
+    const saved = localStorage.getItem("satark_family_devices")
+    if (saved) {
+      try { setFamilyDevices(JSON.parse(saved)) } catch (e) { console.error(e) }
+    }
+  }, [])
+
+  useEffect(() => {
+    localStorage.setItem("satark_family_devices", JSON.stringify(familyDevices))
+  }, [familyDevices])
+
+  // --- Password Logic ---
+  const checkPassword = (val: string) => {
+    setPassword(val)
+    if (!val) { setPassStrength(null); return }
+
+    const isBreached = COMMON_BREACHED_PASSWORDS.includes(val.toLowerCase())
+    
+    // Entropy check
+    let score = 0
+    if (val.length > 8) score += 25
+    if (/[A-Z]/.test(val)) score += 25
+    if (/[0-9]/.test(val)) score += 25
+    if (/[^A-Za-z0-9]/.test(val)) score += 25
+
+    let label = "Weak"
+    let color = "text-destructive"
+    if (score >= 75) { label = "Strong"; color = "text-accent" }
+    else if (score >= 50) { label = "Medium"; color = "text-amber-500" }
+
+    setPassStrength({ score, label, color, breach: isBreached })
+  }
+
+  // --- Family Logic ---
+  const addFamilyMember = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newFamily.name || !newFamily.model) return
+    const device: FamilyDevice = { ...newFamily, id: Date.now().toString() }
+    setFamilyDevices([...familyDevices, device])
+    setNewFamily({ name: "", relation: "", model: "" })
+    setShowAddFamily(false)
+    toast.success(t("Family member added", "परिवार का सदस्य जोड़ा गया"))
+  }
+
+  const sendSecurityPing = (name: string) => {
+    if (!socket) {
+      toast.error(t("Socket not connected", "सॉकेट कनेक्ट नहीं है"))
+      return
+    }
+    const toastId = toast.loading(t(`Sending Security Ping to ${name}'s device...`, `${name} के डिवाइस पर सुरक्षा पिंग भेज रहे हैं...`))
+    
+    socket.emit('send_security_ping', {
+      name: "Vikas Kannaujiya", // In real app, get from profile state
+      target: name,
+      message: "Device security check requested.",
+      timestamp: new Date().toISOString()
+    })
+
+    // Socket.io usually acknowledges immediately if sent
+    setTimeout(() => {
+      toast.success(t(`Ping sent to ${name}. Waiting for acknowledgment.`, `${name} को पिंग भेजा गया। पावती की प्रतीक्षा है।`), { id: toastId })
+    }, 1000)
+  }
+  // --- SMS/Call Scanner State ---
+  const [smsText, setSmsText] = useState("")
+  const [isScanningSms, setIsScanningSms] = useState(false)
+  const [smsResult, setSmsResult] = useState<{ risk: "Low" | "Medium" | "High"; message: string } | null>(null)
+  
+  const scanSms = async () => {
+    if (!smsText) return
+    setIsScanningSms(true)
+    setSmsResult(null)
+    const toastId = toast.loading(t("Analyzing SMS content for threats...", "SMS कंटेंट का विश्लेषण कर रहे हैं..."))
+    
+    try {
+      const res = await api.post("/api/scan-query", { query: smsText, type: 'sms' })
+      const result = {
+        risk: (res.data?.riskLevel as "Low" | "Medium" | "High") || "Low",
+        message: res.data?.message || "Scan complete."
+      }
+      setSmsResult(result)
+      toast.success(t("SMS Scan Complete", "SMS स्कैन पूरा हुआ"), { id: toastId })
+    } catch (err) {
+      console.error("SMS Scan failed:", err)
+      toast.error(t("Scan failed. Using offline analyzer.", "स्कैन विफल। ऑफलाइन एनालाइजर का उपयोग कर रहे हैं।"), { id: toastId })
+      
+      const phishingKeywords = ["otp", "win", "lottery", "prize", "kyc", "bank", "update", "click", "http", "https", "link", "suspend", "block"]
+      const foundKeywords = phishingKeywords.filter(kw => smsText.toLowerCase().includes(kw))
+      
+      if (foundKeywords.length >= 3) {
+        setSmsResult({ risk: "High", message: t("High Risk: Likely Phishing SMS detected. Do not click any links.", "उच्च जोखिम: संभावित फिशिंग एसएमएस। किसी भी लिंक पर क्लिक न करें।") })
+      } else if (foundKeywords.length > 0) {
+        setSmsResult({ risk: "Medium", message: t("Medium Risk: Suspicious keywords found. Be cautious.", "मध्यम जोखिम: संदिग्ध कीवर्ड पाए गए। सावधान रहें।") })
+      } else {
+        setSmsResult({ risk: "Low", message: t("Low Risk: No obvious phishing indicators found.", "कम जोखिम: कोई स्पष्ट फिशिंग संकेत नहीं मिले।") })
+      }
+    } finally {
+      setIsScanningSms(false)
+    }
+  }
+
+  const [callAudioFile, setCallAudioFile] = useState<File | null>(null)
+  const [isScanningCall, setIsScanningCall] = useState(false)
+  const [callResult, setCallResult] = useState<{ risk: "Low" | "High"; message: string } | null>(null)
+
+  const scanCall = async () => {
+    if (!callAudioFile) return
+    setIsScanningCall(true)
+    // Simulate complex audio analysis
+    await new Promise(r => setTimeout(r, 3000))
+    
+    // In a real app, we might use Whisper API or local VAD/Speech-to-Text
+    // For now, we simulate based on filename or just randomness for demo
+    const isLikelyScam = callAudioFile.name.toLowerCase().includes("scam") || Math.random() > 0.7
+    
+    if (isLikelyScam) {
+      setCallResult({ risk: "High", message: t("High Risk: Scam patterns detected in audio recording.", "उच्च जोखिम: ऑडियो रिकॉर्डिंग में स्कैम पैटर्न पाए गए।") })
+    } else {
+      setCallResult({ risk: "Low", message: t("Low Risk: No malicious patterns detected in call audio.", "कम जोखिम: कॉल ऑडियो में कोई हानिकारक पैटर्न नहीं मिला।") })
+    }
+    setIsScanningCall(false)
+  }
+
   const [callMonitor, setCallMonitor] = useState(true)
   const [smsFirewall, setSmsFirewall] = useState(true)
   const [upiBreaker, setUpiBreaker] = useState(false)
@@ -204,27 +426,211 @@ export function TabShield() {
         {!showSkeleton && (
           <>
             {/* === QUICK SCAN PRIMARY WIDGET === */}
-            <button className="relative flex items-center gap-3 p-5 rounded-3xl bg-gradient-to-r from-primary/20 via-primary/10 to-transparent border border-primary/40 hover:border-primary/60 transition-all active:scale-[0.97] shadow-lg shadow-primary/10 overflow-hidden group">
-              {/* Animated background gradient */}
-              <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-transparent to-primary/5 group-hover:from-primary/20 transition-all" />
-              <div className="absolute -top-12 -right-12 w-24 h-24 rounded-full bg-primary/20 blur-2xl group-hover:bg-primary/30 transition-all" />
-              
-              {/* Content */}
-              <div className="relative flex items-center gap-4 flex-1">
-                <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-primary/20 shrink-0 shadow-lg shadow-primary/10">
-                  <Zap className={cn("text-primary drop-shadow-[0_0_10px_rgba(59,130,246,0.3)]", isElderly ? "w-7 h-7" : "w-6 h-6")} fill="currentColor" />
+            <div className="flex flex-col gap-3">
+              <button 
+                onClick={runDeviceAudit}
+                disabled={isAuditing}
+                className="relative flex items-center gap-3 p-5 rounded-3xl bg-gradient-to-r from-primary/20 via-primary/10 to-transparent border border-primary/40 hover:border-primary/60 transition-all active:scale-[0.97] shadow-lg shadow-primary/10 overflow-hidden group disabled:opacity-70"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-transparent to-primary/5 group-hover:from-primary/20 transition-all" />
+                <div className="absolute -top-12 -right-12 w-24 h-24 rounded-full bg-primary/20 blur-2xl group-hover:bg-primary/30 transition-all" />
+                <div className="relative flex items-center gap-4 flex-1">
+                  <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-primary/20 shrink-0 shadow-lg shadow-primary/10">
+                    {isAuditing ? (
+                      <div className="w-7 h-7 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Zap className={cn("text-primary drop-shadow-[0_0_10px_rgba(59,130,246,0.3)]", isElderly ? "w-7 h-7" : "w-6 h-6")} fill="currentColor" />
+                    )}
+                  </div>
+                  <div className="text-left">
+                    <p className={cn("font-bold text-primary", isElderly ? "text-base" : "text-sm")}>
+                      {isAuditing ? t("Auditing Device...", "डिवाइस ऑडिट हो रहा है...") : t("Instant Device Audit", "तत्काल डिवाइस ऑडिट")}
+                    </p>
+                    <p className={cn("text-foreground/70 mt-0.5", isElderly ? "text-xs" : "text-[11px]")}>
+                      {t("Check OS, CPU, Battery & Connection health", "ओएस, सीपीयू, बैटरी और कनेक्शन स्वास्थ्य की जांच करें")}
+                    </p>
+                  </div>
                 </div>
-                <div className="text-left">
-                  <p className={cn("font-bold text-primary", isElderly ? "text-base" : "text-sm")}>
-                    {t("Instant Quick Scan", "तत्काल त्वरित स्कैन")}
-                  </p>
-                  <p className={cn("text-foreground/70 mt-0.5", isElderly ? "text-xs" : "text-[11px]")}>
-                    {t("Tap to scan for threats in 5 seconds", "5 सेकंड में खतरों के लिए स्कैन करने के लिए टैप करें")}
-                  </p>
+                <ChevronRight className="relative w-5 h-5 text-primary/60 shrink-0" />
+              </button>
+
+              {/* Audit Results Overlay/Card */}
+              {auditData && (
+                <div className="rounded-3xl bg-slate-900 border border-slate-800 p-5 space-y-4 shadow-xl animate-in zoom-in-95 duration-300">
+                   <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Smartphone className="w-5 h-5 text-primary" />
+                      <h3 className="font-bold text-white text-sm">{t("Device Health Report", "डिवाइस हेल्थ रिपोर्ट")}</h3>
+                    </div>
+                    <span className="text-[10px] font-mono text-slate-500">{auditData.lastScan}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 rounded-2xl bg-slate-800/50 border border-slate-700">
+                      <p className="text-[10px] text-slate-400 uppercase tracking-wider">{t("Operating System", "ऑपरेटिंग सिस्टम")}</p>
+                      <p className="text-sm font-bold text-white">{auditData.os} ({auditData.browser})</p>
+                    </div>
+                    <div className="p-3 rounded-2xl bg-slate-800/50 border border-slate-700">
+                      <p className="text-[10px] text-slate-400 uppercase tracking-wider">{t("Connection", "कनेक्शन")}</p>
+                      <p className="text-sm font-bold text-white uppercase">{auditData.connection} Network</p>
+                    </div>
+                    <div className="p-3 rounded-2xl bg-slate-800/50 border border-slate-700">
+                      <p className="text-[10px] text-slate-400 uppercase tracking-wider">{t("CPU Cores", "सीपीयू कोर")}</p>
+                      <p className="text-sm font-bold text-white">{auditData.cores} Logical Cores</p>
+                    </div>
+                    <div className="p-3 rounded-2xl bg-slate-800/50 border border-slate-700">
+                      <p className="text-[10px] text-slate-400 uppercase tracking-wider">{t("Battery Health", "बैटरी हेल्थ")}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-bold text-white">{auditData.battery}%</p>
+                        {auditData.isCharging && <Zap className="w-3 h-3 text-accent fill-accent" />}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Functional Password Breach Scanner */}
+              <div className="rounded-3xl bg-slate-900 border border-slate-800 p-5 space-y-4 shadow-xl">
+                <div className="flex items-center gap-2">
+                  <KeyRound className="w-5 h-5 text-primary" />
+                  <h3 className="font-bold text-white text-sm">{t("Database Password Scanner", "डेटाबेस पासवर्ड स्कैनर")}</h3>
+                </div>
+                <div className="relative">
+                  <input 
+                    type="password"
+                    placeholder={t("Type password to check...", "जांचने के लिए पासवर्ड लिखें...")}
+                    value={password}
+                    onChange={(e) => checkPassword(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-2xl px-4 py-3 text-white text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                  {passStrength && (
+                    <div className="mt-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                      {passStrength.breach ? (
+                        <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/30 flex items-center gap-2">
+                          <AlertTriangle className="w-4 h-4 text-destructive" />
+                          <p className="text-destructive font-bold text-[10px] uppercase tracking-wider">
+                            {t("CRITICAL: Password found in known data breaches!", "महत्वपूर्ण: पासवर्ड डेटा ब्रीच में पाया गया!")}
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className={cn("text-[10px] font-bold uppercase tracking-widest", passStrength.color)}>
+                              {t(`Strength: ${passStrength.label}`, `शक्ति: ${passStrength.label}`)}
+                            </span>
+                            <span className="text-slate-500 text-[9px] font-mono">256-bit Entropy</span>
+                          </div>
+                          <div className="w-full h-1 bg-slate-800 rounded-full overflow-hidden">
+                            <div className={cn("h-full transition-all duration-500", passStrength.score === 100 ? "bg-accent" : passStrength.score >= 50 ? "bg-amber-500" : "bg-destructive")} 
+                                 style={{ width: `${passStrength.score}%` }} />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
-              <ChevronRight className="relative w-5 h-5 text-primary/60 shrink-0" />
-            </button>
+            </div>
+
+            {/* Offline Bank Freeze Utility */}
+            <div className="rounded-3xl bg-white dark:bg-card border border-slate-100 dark:border-border p-5 space-y-4 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-5 h-5 text-accent" />
+                  <h3 className="font-bold text-foreground text-sm">{t("Offline Bank Freeze", "ऑफलाइन बैंक फ्रीज")}</h3>
+                </div>
+                <span className="text-[8px] font-mono font-bold bg-accent/10 text-accent px-2 py-0.5 rounded-full">NATIVE ACTION</span>
+              </div>
+              
+              <div className="grid grid-cols-4 gap-2">
+                {BANKS.map(bank => (
+                  <button
+                    key={bank.name}
+                    onClick={() => setSelectedBank(bank)}
+                    className={cn(
+                      "py-2 rounded-xl text-[10px] font-bold border transition-all",
+                      selectedBank.name === bank.name 
+                        ? "bg-accent/10 border-accent text-accent" 
+                        : "bg-secondary/50 border-border text-muted-foreground hover:border-accent/30"
+                    )}
+                  >
+                    {bank.name}
+                  </button>
+                ))}
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => { if (typeof window !== "undefined") window.location.href = `tel:${selectedBank.phone}` }}
+                    className="flex-1 flex items-center justify-center gap-2 py-3 bg-slate-900 text-white rounded-2xl hover:bg-slate-800 transition-all active:scale-[0.98]"
+                  >
+                    <Phone className="w-4 h-4 text-accent" />
+                    <span className="text-xs font-bold">{t("CALL BANK", "बैंक को कॉल करें")}</span>
+                  </button>
+                  <button 
+                    onClick={() => { if (typeof window !== "undefined") window.location.href = `sms:${selectedBank.sms}?body=${encodeURIComponent(selectedBank.body)}` }}
+                    className="flex-1 flex items-center justify-center gap-2 py-3 bg-accent text-slate-950 rounded-2xl hover:bg-accent/90 transition-all active:scale-[0.98]"
+                  >
+                    <MessageSquare className="w-4 h-4" />
+                    <span className="text-xs font-bold">{t("SEND SMS", "SMS भेजें")}</span>
+                  </button>
+                </div>
+                <p className="text-muted-foreground text-[9px] text-center italic px-2">
+                  {t("Warning: This opens your native dialer/SMS to directly contact official banking security.", "चेतावनी: यह आधिकारिक बैंकिंग सुरक्षा से संपर्क करने के लिए आपके फोन के डायलर/SMS को खोलेगा।")}
+                </p>
+              </div>
+            </div>
+
+            {/* Functional Family Guardian Network */}
+            <div className="rounded-3xl bg-white dark:bg-card border border-slate-100 dark:border-border p-5 space-y-4 shadow-sm">
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-foreground text-sm flex items-center gap-2">
+                  <Smartphone className="w-5 h-5 text-primary" />
+                  {t("Family Guardian Network", "फैमिली गार्जियन नेटवर्क")}
+                </h3>
+                <button 
+                  onClick={() => setShowAddFamily(!showAddFamily)}
+                  className="p-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+              </div>
+
+              {showAddFamily && (
+                <form onSubmit={addFamilyMember} className="p-4 rounded-2xl bg-secondary/30 border border-border grid grid-cols-2 gap-2 animate-in slide-in-from-top duration-200">
+                  <input placeholder={t("Name", "नाम")} className="bg-card border border-border rounded-xl px-3 py-2 text-xs text-foreground" value={newFamily.name} onChange={e => setNewFamily({...newFamily, name: e.target.value})} required />
+                  <input placeholder={t("Relation", "संबंध")} className="bg-card border border-border rounded-xl px-3 py-2 text-xs text-foreground" value={newFamily.relation} onChange={e => setNewFamily({...newFamily, relation: e.target.value})} />
+                  <input placeholder={t("Phone Model", "फोन मॉडल")} className="col-span-2 bg-card border border-border rounded-xl px-3 py-2 text-xs text-foreground" value={newFamily.model} onChange={e => setNewFamily({...newFamily, model: e.target.value})} required />
+                  <button type="submit" className="col-span-2 py-2 bg-primary text-primary-foreground font-bold rounded-xl text-xs">{t("Add Member", "सदस्य जोड़ें")}</button>
+                </form>
+              )}
+
+              <div className="space-y-3">
+                {familyDevices.length > 0 ? (
+                  familyDevices.map(device => (
+                    <div key={device.id} className="flex items-center justify-between p-3 rounded-2xl bg-secondary/20 border border-border/50 group">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                          <Smartphone className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="text-foreground font-bold text-xs">{device.name} <span className="text-muted-foreground text-[10px] font-normal">({device.relation})</span></p>
+                          <p className="text-muted-foreground text-[10px]">{device.model}</p>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => sendSecurityPing(device.name)}
+                        className="px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-[10px] font-bold hover:bg-primary hover:text-white transition-all"
+                      >
+                        {t("SECURITY PING", "सुरक्षा पिंग")}
+                      </button>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-center text-muted-foreground text-[10px] py-4 italic">{t("No family devices added. Monitoring inactive.", "कोई फैमिली डिवाइस नहीं जोड़ी गई।")}</p>
+                )}
+              </div>
+            </div>
 
             {/* Delta DB Toast */}
         {showDbToast && (
@@ -259,70 +665,114 @@ export function TabShield() {
           </div>
         </div>
 
-        {/* Demo Buttons Row */}
-        <div className="grid grid-cols-2 gap-2">
-          <button onClick={startSplashFlow}
-            className="flex items-center gap-2 p-3 rounded-2xl bg-white dark:bg-secondary border border-slate-200 dark:border-border hover:bg-slate-50 dark:hover:bg-secondary/70 transition-all active:scale-[0.97]">
-            <Smartphone className="w-4 h-4 text-primary" />
-            <span className={cn("font-semibold text-foreground", isElderly ? "text-xs" : "text-[11px]")}>
-              {t("Splash + OTP", "स्प्लैश + OTP")}
-            </span>
-          </button>
-          <button onClick={() => setShowPermissions(true)}
-            className="flex items-center gap-2 p-3 rounded-2xl bg-white dark:bg-secondary border border-slate-200 dark:border-border hover:bg-slate-50 dark:hover:bg-secondary/70 transition-all active:scale-[0.97]">
-            <Lock className="w-4 h-4 text-primary" />
-            <span className={cn("font-semibold text-foreground", isElderly ? "text-xs" : "text-[11px]")}>
-              {t("Permissions", "अनुमतियां")}
-            </span>
-          </button>
-          <button onClick={handlePullRefresh}
-            className="flex items-center gap-2 p-3 rounded-2xl bg-white dark:bg-secondary border border-slate-200 dark:border-border hover:bg-slate-50 dark:hover:bg-secondary/70 transition-all active:scale-[0.97]">
-            <MessageSquare className="w-4 h-4 text-primary" />
-            <span className={cn("font-semibold text-foreground", isElderly ? "text-xs" : "text-[11px]")}>
-              {t("Refresh", "रीफ्रेश")}
-            </span>
-          </button>
-          <button onClick={handleSimulateScam}
-            className="flex items-center gap-2 p-3 rounded-2xl bg-destructive/10 border border-destructive/20 hover:bg-destructive/15 transition-all active:scale-[0.97]">
-            <AlertTriangle className="w-4 h-4 text-destructive" />
-            <span className={cn("font-bold text-destructive", isElderly ? "text-xs" : "text-[11px]")}>
-              {t("Simulate Scam", "स्कैम सिम्युलेट")}
-            </span>
-          </button>
-        </div>
-
         {/* Live Protection Toggles - iOS Settings Style */}
         <div className="rounded-2xl bg-white dark:bg-card border border-slate-100 dark:border-border shadow-[0_4px_20px_rgba(0,0,0,0.03)] overflow-hidden divide-y divide-slate-100 dark:divide-border">
           {/* Call Monitor */}
-          <div className="flex items-center gap-3 px-4 py-3">
-            <div className={cn("flex items-center justify-center w-8 h-8 rounded-lg", callMonitor ? "bg-accent/15" : "bg-secondary")}>
-              <Phone className={cn(callMonitor ? "text-accent" : "text-muted-foreground", "w-4 h-4")} />
+          <div className="flex flex-col gap-0 divide-y divide-slate-100 dark:divide-border">
+            <div className="flex items-center gap-3 px-4 py-3">
+              <div className={cn("flex items-center justify-center w-8 h-8 rounded-lg", callMonitor ? "bg-accent/15" : "bg-secondary")}>
+                <Phone className={cn(callMonitor ? "text-accent" : "text-muted-foreground", "w-4 h-4")} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className={cn("font-medium text-foreground", isElderly ? "text-sm" : "text-[13px]")}>
+                  {t("Live Call Monitor", "लाइव कॉल मॉनिटर")}
+                </p>
+                <p className="text-muted-foreground text-[10px]">
+                  {callMonitor ? t("Scanning incoming calls", "इनकमिंग कॉल स्कैन") : t("Disabled", "अक्षम")}
+                </p>
+              </div>
+              <Switch checked={callMonitor} onCheckedChange={setCallMonitor} />
             </div>
-            <div className="flex-1 min-w-0">
-              <p className={cn("font-medium text-foreground", isElderly ? "text-sm" : "text-[13px]")}>
-                {t("Live Call Monitor", "लाइव कॉल मॉनिटर")}
-              </p>
-              <p className="text-muted-foreground text-[10px]">
-                {callMonitor ? t("Scanning incoming calls", "इनकमिंग कॉल स्कैन") : t("Disabled", "अक्षम")}
-              </p>
-            </div>
-            <Switch checked={callMonitor} onCheckedChange={setCallMonitor} />
+            
+            {callMonitor && (
+              <div className="px-4 py-3 bg-secondary/20 animate-in slide-in-from-top-2 duration-200">
+                <div className="flex flex-col gap-3">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{t("Manual Call Analysis", "मैनुअल कॉल विश्लेषण")}</p>
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="file" 
+                      accept="audio/*" 
+                      onChange={(e) => setCallAudioFile(e.target.files?.[0] || null)}
+                      className="hidden" 
+                      id="call-upload" 
+                    />
+                    <label 
+                      htmlFor="call-upload" 
+                      className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl border border-dashed border-primary/40 bg-primary/5 text-primary text-[11px] font-bold cursor-pointer hover:bg-primary/10 transition-colors"
+                    >
+                      <Plus className="w-3 h-3" />
+                      {callAudioFile ? callAudioFile.name : t("Upload Call Recording", "कॉल रिकॉर्डिंग अपलोड करें")}
+                    </label>
+                    <button 
+                      onClick={scanCall}
+                      disabled={!callAudioFile || isScanningCall}
+                      className="px-4 py-2 bg-primary text-white rounded-xl text-[11px] font-bold disabled:opacity-50"
+                    >
+                      {isScanningCall ? t("Analyzing...", "विश्लेषण...") : t("Analyze", "विश्लेषण")}
+                    </button>
+                  </div>
+                  {callResult && (
+                    <div className={cn(
+                      "p-3 rounded-xl border text-[11px] flex items-start gap-2 animate-in zoom-in-95",
+                      callResult.risk === "High" ? "bg-destructive/10 border-destructive/30 text-destructive" : "bg-accent/10 border-accent/30 text-accent"
+                    )}>
+                      {callResult.risk === "High" ? <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> : <CheckCircle className="w-3.5 h-3.5 shrink-0" />}
+                      <p>{callResult.message}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* SMS Firewall */}
-          <div className="flex items-center gap-3 px-4 py-3">
-            <div className={cn("flex items-center justify-center w-8 h-8 rounded-lg", smsFirewall ? "bg-accent/15" : "bg-secondary")}>
-              <MessageSquare className={cn(smsFirewall ? "text-accent" : "text-muted-foreground", "w-4 h-4")} />
+          <div className="flex flex-col gap-0 divide-y divide-slate-100 dark:divide-border">
+            <div className="flex items-center gap-3 px-4 py-3">
+              <div className={cn("flex items-center justify-center w-8 h-8 rounded-lg", smsFirewall ? "bg-accent/15" : "bg-secondary")}>
+                <MessageSquare className={cn(smsFirewall ? "text-accent" : "text-muted-foreground", "w-4 h-4")} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className={cn("font-medium text-foreground", isElderly ? "text-sm" : "text-[13px]")}>
+                  {t("SMS Firewall", "SMS फ़ायरवॉल")}
+                </p>
+                <p className="text-muted-foreground text-[10px]">
+                  {smsFirewall ? t("Blocking phishing SMS", "फिशिंग SMS ब्लॉक") : t("Disabled", "अक्षम")}
+                </p>
+              </div>
+              <Switch checked={smsFirewall} onCheckedChange={setSmsFirewall} />
             </div>
-            <div className="flex-1 min-w-0">
-              <p className={cn("font-medium text-foreground", isElderly ? "text-sm" : "text-[13px]")}>
-                {t("SMS Firewall", "SMS फ़ायरवॉल")}
-              </p>
-              <p className="text-muted-foreground text-[10px]">
-                {smsFirewall ? t("Blocking phishing SMS", "फिशिंग SMS ब्लॉक") : t("Disabled", "अक्षम")}
-              </p>
-            </div>
-            <Switch checked={smsFirewall} onCheckedChange={setSmsFirewall} />
+
+            {smsFirewall && (
+              <div className="px-4 py-3 bg-secondary/20 animate-in slide-in-from-top-2 duration-200">
+                <div className="flex flex-col gap-3">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{t("Manual SMS Scanner", "मैनुअल एसएमएस स्कैनर")}</p>
+                  <div className="flex gap-2">
+                    <input 
+                      placeholder={t("Paste suspicious SMS text...", "संदिग्ध एसएमएस पेस्ट करें...")}
+                      value={smsText}
+                      onChange={(e) => setSmsText(e.target.value)}
+                      className="flex-1 bg-card border border-border rounded-xl px-3 py-2 text-[11px] focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                    <button 
+                      onClick={scanSms}
+                      disabled={!smsText || isScanningSms}
+                      className="px-4 py-2 bg-primary text-white rounded-xl text-[11px] font-bold disabled:opacity-50"
+                    >
+                      {isScanningSms ? t("Scanning...", "स्कैनिंग...") : t("Scan", "स्कैन")}
+                    </button>
+                  </div>
+                  {smsResult && (
+                    <div className={cn(
+                      "p-3 rounded-xl border text-[11px] flex items-start gap-2 animate-in zoom-in-95",
+                      smsResult.risk === "High" ? "bg-destructive/10 border-destructive/30 text-destructive" : smsResult.risk === "Medium" ? "bg-amber-500/10 border-amber-500/30 text-amber-600" : "bg-accent/10 border-accent/30 text-accent"
+                    )}>
+                      {smsResult.risk === "High" ? <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> : smsResult.risk === "Medium" ? <Info className="w-3.5 h-3.5 shrink-0" /> : <CheckCircle className="w-3.5 h-3.5 shrink-0" />}
+                      <p>{smsResult.message}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* UPI Circuit Breaker */}

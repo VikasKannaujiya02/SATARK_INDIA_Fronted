@@ -1,9 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import { Shield, MessageSquare, Layout, MapPin, FileText, HelpCircle, Info, X } from "lucide-react"
+import { Shield, MessageSquare, Layout, MapPin, FileText, HelpCircle, Info, X, Settings, ShieldCheck, Lock, LifeBuoy } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Switch } from "@/components/ui/switch"
+import Link from "next/link"
 
 interface SettingsDrawerProps {
   open: boolean
@@ -14,7 +15,6 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
   const [smsPerm, setSmsPerm] = useState(true)
   const [overlayPerm, setOverlayPerm] = useState(true)
   const [locationPerm, setLocationPerm] = useState(true)
-  const [showTerms, setShowTerms] = useState(false)
 
   if (!open) return null
 
@@ -63,29 +63,51 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
               </div>
             </div>
 
-            {/* Terms & Privacy */}
-            <button
-              onClick={() => setShowTerms(true)}
-              className="w-full flex items-center gap-3 p-4 rounded-2xl bg-slate-800/50 border border-slate-700 hover:bg-slate-800 transition-colors text-left"
-            >
-              <FileText className="w-4 h-4 text-primary" />
-              <div className="flex-1">
-                <p className="text-white font-medium text-sm">Terms & Privacy</p>
-                <p className="text-slate-500 text-xs">Legal information</p>
-              </div>
-            </button>
+            {/* Menu Links */}
+            <div className="space-y-2">
+              <Link
+                href="/settings"
+                className="w-full flex items-center gap-3 p-4 rounded-2xl bg-slate-800/50 border border-slate-700 hover:bg-slate-800 transition-colors text-left"
+              >
+                <Settings className="w-4 h-4 text-primary" />
+                <div className="flex-1">
+                  <p className="text-white font-medium text-sm">Account Settings</p>
+                  <p className="text-slate-500 text-xs">Profile & Security</p>
+                </div>
+              </Link>
 
-            {/* Help Center */}
-            <div className="rounded-2xl bg-slate-800/50 border border-slate-700 overflow-hidden">
-              <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-700">
-                <HelpCircle className="w-4 h-4 text-primary" />
-                <h3 className="text-white font-semibold text-sm">Help Center</h3>
-              </div>
-              <div className="p-4 space-y-2 text-slate-400 text-xs">
-                <p><strong className="text-slate-300">How does SOS work?</strong> Tap & hold to alert family.</p>
-                <p><strong className="text-slate-300">How to report a scam?</strong> Use the Offense tab.</p>
-                <p><strong className="text-slate-300">Contact Support:</strong> support@satarkindia.in</p>
-              </div>
+              <Link
+                href="/terms"
+                className="w-full flex items-center gap-3 p-4 rounded-2xl bg-slate-800/50 border border-slate-700 hover:bg-slate-800 transition-colors text-left"
+              >
+                <ShieldCheck className="w-4 h-4 text-primary" />
+                <div className="flex-1">
+                  <p className="text-white font-medium text-sm">Terms & Conditions</p>
+                  <p className="text-slate-500 text-xs">Legal information</p>
+                </div>
+              </Link>
+
+              <Link
+                href="/privacy"
+                className="w-full flex items-center gap-3 p-4 rounded-2xl bg-slate-800/50 border border-slate-700 hover:bg-slate-800 transition-colors text-left"
+              >
+                <Lock className="w-4 h-4 text-primary" />
+                <div className="flex-1">
+                  <p className="text-white font-medium text-sm">Privacy Policy</p>
+                  <p className="text-slate-500 text-xs">Data protection policy</p>
+                </div>
+              </Link>
+
+              <Link
+                href="/help"
+                className="w-full flex items-center gap-3 p-4 rounded-2xl bg-slate-800/50 border border-slate-700 hover:bg-slate-800 transition-colors text-left"
+              >
+                <LifeBuoy className="w-4 h-4 text-primary" />
+                <div className="flex-1">
+                  <p className="text-white font-medium text-sm">Help Center</p>
+                  <p className="text-slate-500 text-xs">Support & Documentation</p>
+                </div>
+              </Link>
             </div>
 
             {/* App Info */}
@@ -99,25 +121,6 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
           </div>
         </div>
       </div>
-
-      {/* Terms Modal */}
-      {showTerms && (
-        <div className="fixed inset-0 z-[170] flex items-center justify-center p-4 bg-black/70" onClick={() => setShowTerms(false)}>
-          <div className="w-full max-w-sm rounded-2xl bg-slate-900 border border-slate-700 p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-bold text-white text-lg mb-3">Terms & Privacy</h3>
-            <p className="text-slate-400 text-sm leading-relaxed">
-              Welcome to Satark India. Data is processed locally for anti-scam purposes. We do not sell your data. 
-              By using this app, you agree to our privacy-first approach.
-            </p>
-            <button
-              onClick={() => setShowTerms(false)}
-              className="mt-4 w-full py-3 rounded-xl bg-primary text-primary-foreground font-bold text-sm"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
     </>
   )
 }
