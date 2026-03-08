@@ -381,7 +381,6 @@ export function TabInvestigator() {
               </button>
             ))}
           </div>
-        </div>
       )}
 
       {/* Trending Scams in India */}
