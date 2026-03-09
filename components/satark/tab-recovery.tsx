@@ -20,6 +20,7 @@ import {
   Battery,
   MapPin,
   Clock,
+  X,
 } from "lucide-react"
 import { useApp } from "./app-context"
 import { Switch } from "@/components/ui/switch"
@@ -42,6 +43,7 @@ export function TabRecovery() {
   // --- SOS State ---
   const [emergencyContacts, setEmergencyContacts] = useState<EmergencyContact[]>([])
   const [isSosSending, setIsSosSending] = useState(false)
+  const [sosTimestamp, setSosTimestamp] = useState<number | null>(null)
   const [showAddContact, setShowAddContact] = useState(false)
   const [newContact, setNewContact] = useState({ name: "", relation: "", phone: "", email: "" })
 
@@ -139,6 +141,7 @@ export function TabRecovery() {
       }).catch(() => {})
 
       await Promise.all(sendPromises)
+      setSosTimestamp(Date.now())
       toast.success(t("Emergency SOS Dispatched to all contacts!", "आपातकालीन SOS सभी संपर्कों को भेज दिया गया!"), { id: toastId })
     } catch (error) {
       console.error("SOS Dispatch Failed:", error)
@@ -264,6 +267,19 @@ export function TabRecovery() {
 
   return (
     <div className="flex flex-col gap-4 p-4 pb-10 max-w-2xl mx-auto">
+      {/* SOS Active Badge - Shows for 5 mins after trigger */}
+      {sosTimestamp && (Date.now() - sosTimestamp < 300000) && (
+        <div className="flex items-center justify-center gap-3 p-3 rounded-2xl bg-destructive/20 border border-destructive animate-pulse">
+          <Siren className="w-5 h-5 text-destructive" />
+          <span className="text-destructive font-black text-sm uppercase tracking-widest">
+            {t("SOS TRIGGERED! Alerts Sent.", "SOS ट्रिगर हुआ! अलर्ट भेजे गए।")}
+          </span>
+          <button onClick={() => setSosTimestamp(null)} className="ml-auto p-1 text-destructive hover:bg-destructive/10 rounded-lg">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Insurance Banner for SOS */}
       <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-emerald-500/20 via-emerald-500/10 to-transparent border border-emerald-500/20 p-4">
         <div className="flex items-center justify-between">
@@ -314,7 +330,6 @@ export function TabRecovery() {
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-from)_0%,_transparent_70%)] opacity-20 group-hover:opacity-40 transition-opacity" />
               <Siren className="w-14 h-14 text-white animate-bounce" fill="currentColor" />
               <span className="text-2xl font-black text-white tracking-widest">{t("TRIGGER EMERGENCY SOS", "इमरजेंसी SOS ट्रिगर करें")}</span>
-              <p className="text-red-200 text-xs font-medium uppercase tracking-tighter">{t("Alerts via EmailJS + Real-time Telemetry", "EmailJS + रियल-टाइम टेलीमेट्री के माध्यम से अलर्ट")}</p>
             </>
           )}
         </button>

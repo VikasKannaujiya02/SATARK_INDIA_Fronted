@@ -82,10 +82,15 @@ export function TabOffense() {
     networkType: "-",
   })
 
-  const [deepfakeScore, setDeepfakeScore] = useState<number | null>(null)
-  const [deepfakeLoading, setDeepfakeLoading] = useState(false)
-  const [deepfakeError, setDeepfakeError] = useState("")
-  const deepfakeInputRef = useRef<HTMLInputElement>(null)
+  // --- Decoy Receipt State ---
+  const [receiptData, setReceiptData] = useState({
+    amount: "4,999",
+    merchant: "Amazon India",
+    date: new Date().toLocaleDateString(),
+    txnId: "T" + Math.random().toString(36).substring(2, 12).toUpperCase(),
+    status: "Success"
+  })
+  const receiptRef = useRef<HTMLDivElement>(null)
 
   const [reportScammerNumber, setReportScammerNumber] = useState("")
   const [reportPlatform, setReportPlatform] = useState("")
@@ -113,6 +118,20 @@ export function TabOffense() {
   const [savitriLoading, setSavitriLoading] = useState(false)
   const [shareToast, setShareToast] = useState(false)
   const savitriScrollRef = useRef<HTMLDivElement>(null)
+
+  const handleDownloadReceipt = async () => {
+    if (!receiptRef.current) return
+    const html2canvas = (await import("html2canvas")).default
+    const canvas = await html2canvas(receiptRef.current, {
+      backgroundColor: "#ffffff",
+      scale: 2,
+    })
+    const link = document.createElement("a")
+    link.download = `satark_decoy_receipt_${receiptData.txnId}.png`
+    link.href = canvas.toDataURL("image/png")
+    link.click()
+    toast.success(t("Decoy Receipt Downloaded", "डेकॉय रसीद डाउनलोड हो गई"))
+  }
 
   const handleShareAlert = async () => {
     try {
@@ -314,21 +333,21 @@ export function TabOffense() {
       </div>
 
       {/* Cyber Defense Arsenal 2x2 Grid */}
-      <div className="grid grid-cols-2 gap-3">
-        {/* Card 1: Deepfake Scanner */}
+      <div className="grid grid-cols-2 gap-4">
+        {/* Card 1: Decoy Receipt Generator */}
         <button
           type="button"
-          onClick={() => document.getElementById("deepfake-section")?.scrollIntoView({ behavior: "smooth" })}
+          onClick={() => document.getElementById("decoy-receipt-section")?.scrollIntoView({ behavior: "smooth" })}
           className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/30 dark:to-cyan-950/30 border border-blue-200 dark:border-blue-800 hover:border-blue-400 dark:hover:border-blue-600 transition-all active:scale-[0.97]"
         >
           <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/50">
-            <Smartphone className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+            <Receipt className="w-6 h-6 text-blue-600 dark:text-blue-400" />
           </div>
           <p className={cn("font-semibold text-foreground text-center", isElderly ? "text-sm" : "text-xs")}>
-            {t("Deepfake Scanner", "डीपफेक स्कैनर")}
+            {t("Decoy Receipt", "डेकॉय रसीद")}
           </p>
           <p className={cn("text-muted-foreground text-[9px] text-center", isElderly ? "text-[10px]" : "text-[8px]")}>
-            {t("Audio/Video", "ऑडियो/वीडियो")}
+            {t("Trap Scammers", "स्कैमर्स को फंसाएं")}
           </p>
         </button>
 
@@ -567,67 +586,84 @@ export function TabOffense() {
         </div>
       </div>
 
-      {/* Deepfake Scanner Card */}
-      <div id="deepfake-section" className="rounded-3xl bg-white dark:bg-card border border-slate-100 dark:border-border shadow-[0_4px_20px_rgba(0,0,0,0.03)] overflow-hidden">
+      {/* Decoy Receipt Generator Section */}
+      <div id="decoy-receipt-section" className="rounded-3xl bg-white dark:bg-card border border-slate-100 dark:border-border shadow-[0_4px_20px_rgba(0,0,0,0.03)] overflow-hidden">
         <div className="p-5 flex items-center gap-3 mb-3">
           <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-blue-100 dark:bg-blue-900/50">
-            <Smartphone className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            <Receipt className="w-5 h-5 text-blue-600 dark:text-blue-400" />
           </div>
           <div>
             <h3 className={cn("font-bold text-foreground", isElderly ? "text-base" : "text-sm")}>
-              {t("AI Deepfake Scanner", "AI डीपफेक स्कैनर")}
+              {t("Decoy Receipt Generator", "डेकॉय रसीद जनरेटर")}
             </h3>
             <p className={cn("text-muted-foreground", isElderly ? "text-xs" : "text-[10px]")}>
-              {t("Detect AI-generated or deepfake images", "AI जनित या डीपफेक छवियों का पता लगाएं")}
+              {t("Generate fake payment screenshots to trap scammers", "स्कैमर्स को फंसाने के लिए नकली भुगतान स्क्रीनशॉट बनाएं")}
             </p>
           </div>
         </div>
-        <div className="p-5 flex flex-col gap-3">
-          <input
-            ref={deepfakeInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleDeepfakeFileChange}
-          />
-          <button
-            type="button"
-            onClick={() => deepfakeInputRef.current?.click()}
-            disabled={deepfakeLoading}
-            className={cn(
-              "w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl font-semibold text-xs transition-all active:scale-[0.97]",
-              deepfakeLoading
-                ? "bg-secondary text-muted-foreground cursor-not-allowed"
-                : "bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 hover:bg-blue-200/50 dark:hover:bg-blue-900/70"
-            )}
-          >
-            {deepfakeLoading ? (
-              <>
-                <div className="w-3 h-3 border-2 border-blue-400/30 border-t-blue-600 rounded-full animate-spin" />
-                <span>{t("Scanning...", "स्कैन हो रहा है...")}</span>
-              </>
-            ) : (
-              <>
-                <FileCheck className="w-4 h-4" />
-                <span>{t("Select Image to Scan", "स्कैन के लिए छवि चुनें")}</span>
-              </>
-            )}
-          </button>
-          {deepfakeScore !== null && (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
-              <span className={cn("font-medium text-foreground", isElderly ? "text-xs" : "text-[10px]")}>
-                {t("AI/Deepfake probability", "AI/डीपफेक संभावना")}:{" "}
-                <span className="font-bold text-blue-600 dark:text-blue-400">
-                  {(deepfakeScore * 100).toFixed(1)}%
-                </span>
-              </span>
+
+        <div className="p-5 pt-0 space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-muted-foreground uppercase px-1">{t("Amount (₹)", "राशि (₹)")}</label>
+              <input 
+                type="text" 
+                value={receiptData.amount}
+                onChange={e => setReceiptData({...receiptData, amount: e.target.value})}
+                className="w-full bg-secondary border border-border rounded-xl px-3 py-2 text-xs text-foreground focus:outline-none focus:border-primary"
+              />
             </div>
-          )}
-          {deepfakeError && (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-destructive/10 border border-destructive/20">
-              <span className="text-destructive font-medium text-[10px]">{deepfakeError}</span>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-muted-foreground uppercase px-1">{t("Merchant", "व्यापारी")}</label>
+              <input 
+                type="text" 
+                value={receiptData.merchant}
+                onChange={e => setReceiptData({...receiptData, merchant: e.target.value})}
+                className="w-full bg-secondary border border-border rounded-xl px-3 py-2 text-xs text-foreground focus:outline-none focus:border-primary"
+              />
             </div>
-          )}
+          </div>
+
+          {/* REALTIME RECEIPT PREVIEW */}
+          <div className="relative group">
+            <div ref={receiptRef} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm max-w-[280px] mx-auto text-slate-900">
+              <div className="flex flex-col items-center text-center gap-2 mb-4">
+                <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center">
+                  <CheckCircle2 className="w-7 h-7 text-emerald-600" />
+                </div>
+                <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">{t("Payment Successful", "भुगतान सफल")}</p>
+                <h4 className="text-3xl font-black">₹{receiptData.amount}</h4>
+              </div>
+              <div className="space-y-3 border-t border-slate-100 pt-4">
+                <div className="flex justify-between text-[10px]">
+                  <span className="text-slate-400 font-medium">{t("Paid to", "भुगतान किया गया")}</span>
+                  <span className="text-slate-800 font-bold">{receiptData.merchant}</span>
+                </div>
+                <div className="flex justify-between text-[10px]">
+                  <span className="text-slate-400 font-medium">{t("Date & Time", "तारीख और समय")}</span>
+                  <span className="text-slate-800 font-bold">{receiptData.date}</span>
+                </div>
+                <div className="flex justify-between text-[10px]">
+                  <span className="text-slate-400 font-medium">{t("Transaction ID", "लेनदेन आईडी")}</span>
+                  <span className="text-slate-800 font-mono font-bold">{receiptData.txnId}</span>
+                </div>
+              </div>
+              <div className="mt-6 flex justify-center">
+                <div className="px-4 py-1.5 rounded-full border border-slate-200 text-[9px] font-bold text-slate-400 flex items-center gap-2">
+                  <Shield className="w-3 h-3" />
+                  SECURED BY SATARK
+                </div>
+              </div>
+            </div>
+            
+            <button 
+              onClick={handleDownloadReceipt}
+              className="mt-4 w-full flex items-center justify-center gap-2 py-3 bg-primary text-slate-950 font-bold rounded-2xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 active:scale-[0.98]"
+            >
+              <Zap className="w-4 h-4 fill-slate-950" />
+              {t("Download Decoy Receipt", "डेकॉय रसीद डाउनलोड करें")}
+            </button>
+          </div>
         </div>
       </div>
 

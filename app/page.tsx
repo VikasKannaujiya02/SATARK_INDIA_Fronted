@@ -15,9 +15,11 @@ import { TabTrust } from "@/components/satark/tab-trust"
 import { cn } from "@/lib/utils"
 import { initNotifications } from "@/lib/notifications"
 import { Lock } from "lucide-react"
+import { useTheme } from "next-themes"
 
 function AppContent() {
-  const { isDark, activeTab, isElderly } = useApp()
+  const { activeTab, isElderly } = useApp()
+  const { theme } = useTheme()
   const router = useRouter()
   const [isAuthorized, setIsAuthorized] = useState(false)
   const [biometricLocked, setBiometricLocked] = useState(false)
@@ -99,7 +101,7 @@ function AppContent() {
   }
 
   return (
-    <div className={cn(isDark ? "dark" : "", "min-h-dvh bg-background transition-colors duration-300")}>
+    <div className={cn(theme === "dark" ? "dark" : "", "min-h-dvh bg-background transition-colors duration-300")}>
       <div className={cn("flex flex-col min-h-dvh max-w-md mx-auto h-screen overflow-hidden bg-slate-50 dark:bg-background shadow-2xl relative", isElderly ? "text-lg" : "text-base")}>
         <GlobalHeader />
         

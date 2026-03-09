@@ -1,10 +1,13 @@
-﻿"use client"
+"use client"
 
 import { useState, useRef, useEffect } from "react"
 import axios from "axios"
 import { useRouter } from "next/navigation"
-import { Shield, Mail, Lock, CheckCircle2, Smartphone } from "lucide-react"
+import { Shield, Mail, Lock, CheckCircle2, Smartphone, LogIn } from "lucide-react"
 import Link from "next/link"
+import { auth, googleProvider } from "@/lib/firebase"
+import { signInWithPopup, RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth"
+import toast from "react-hot-toast"
 
 export default function LoginPage() {
   const [step, setStep] = useState<1 | 2>(1)
@@ -15,8 +18,9 @@ export default function LoginPage() {
   const [verifying, setVerifying] = useState(false)
   const [error, setError] = useState("")
   const [emailInput, setEmailInput] = useState("")
-  const [toastMessage, setToastMessage] = useState("")
   const [resendTimer, setResendTimer] = useState(0)
+  const [confirmationResult, setConfirmationResult] = useState<any>(null)
+  
   const otpInputsRef = useRef<(HTMLInputElement | null)[]>([])
   const router = useRouter()
 
@@ -27,60 +31,72 @@ export default function LoginPage() {
     return () => clearInterval(interval)
   }, [resendTimer])
 
+  const setupRecaptcha = () => {
+    if (!(window as any).recaptchaVerifier) {
+      (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        'size': 'invisible',
+        'callback': (response: any) => {
+          console.log("Recaptcha resolved");
+        }
+      });
+    }
+  }
+
   const handleSendOtp = async () => {
-    if (!phone.trim()) {
-      setError("Please enter your phone number")
+    if (!phone.trim() || phone.length !== 10) {
+      setError("Please enter a valid 10-digit phone number")
       return
     }
     setError("")
     setSending(true)
+    
     try {
-      const res = await axios.post("https://satark-india-backend.onrender.com/api/auth/send-otp", { phone: phone.trim() })
-      if (res.data?.success) {
-        setLoginMethod("phone")
-        setStep(2)
-        setResendTimer(30)
-        setOtp(["", "", "", "", "", ""])
-        setTimeout(() => otpInputsRef.current[0]?.focus(), 100)
-      }
-    } catch (err) {
+      setupRecaptcha()
+      const appVerifier = (window as any).recaptchaVerifier
+      const formatPhone = `+91${phone.trim()}`
+      
+      const confirmation = await signInWithPhoneNumber(auth, formatPhone, appVerifier)
+      setConfirmationResult(confirmation)
+      
+      setLoginMethod("phone")
+      setStep(2)
+      setResendTimer(30)
+      setOtp(["", "", "", "", "", ""])
+      toast.success("OTP sent successfully!")
+      setTimeout(() => otpInputsRef.current[0]?.focus(), 100)
+    } catch (err: any) {
       console.error(err)
-      const ax = err as { code?: string; message?: string; response?: unknown }
-      const isNetworkError =
-        ax?.code === 'ERR_NETWORK' ||
-        (ax?.message === 'Network Error' && !ax?.response)
-      setError(
-        isNetworkError
-          ? "Cannot reach the server. Start the backend or check the connection."
-          : "Could not send OTP. Please try again."
-      )
+      setError(err.message || "Could not send OTP. Please try again.")
+      if ((window as any).recaptchaVerifier) {
+        (window as any).recaptchaVerifier.clear()
+        delete (window as any).recaptchaVerifier
+      }
     } finally {
       setSending(false)
     }
   }
 
-  const handleEmailLogin = async () => {
-    if (!emailInput.trim() || !emailInput.includes("@")) {
-      setToastMessage("Please enter a valid email address")
-      setTimeout(() => setToastMessage(""), 3000)
-      return
-    }
-    setError("")
-    setSending(true)
+  const handleGoogleLogin = async () => {
     try {
-      const res = await axios.post("https://satark-india-backend.onrender.com/api/auth/send-email-otp", { email: emailInput.trim() })
-      if (res.data?.success) {
-        setLoginMethod("email")
-        setStep(2)
-        setResendTimer(30)
-        setOtp(["", "", "", "", "", ""])
-        setTimeout(() => otpInputsRef.current[0]?.focus(), 100)
+      const result = await signInWithPopup(auth, googleProvider)
+      const user = result.user
+      
+      // Call backend to sync user and get JWT
+      const res = await axios.post("https://satark-india-backend.onrender.com/api/auth/firebase-sync", {
+        uid: user.uid,
+        email: user.email,
+        name: user.displayName,
+        photoURL: user.photoURL
+      })
+
+      if (res.data?.token) {
+        localStorage.setItem("satark_token", res.data.token)
+        localStorage.setItem("user", JSON.stringify(res.data.user))
+        router.push("/")
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err)
-      setError("Could not send Email OTP. Please try again.")
-    } finally {
-      setSending(false)
+      toast.error("Google login failed")
     }
   }
 
@@ -94,36 +110,15 @@ export default function LoginPage() {
     setError("")
 
     if (cleanedValue && index < otp.length - 1) {
-      setTimeout(() => otpInputsRef.current[index + 1]?.focus(), 0)
-    }
-  }
-
-  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    const input = e.currentTarget
-    
-    if (e.key === 'Backspace') {
-      e.preventDefault()
-      const next = [...otp]
-      next[index] = ""
-      setOtp(next)
-      
-      if (index > 0) {
-        setTimeout(() => otpInputsRef.current[index - 1]?.focus(), 0)
-      }
-    } else if (e.key === 'ArrowLeft' && index > 0) {
-      e.preventDefault()
-      otpInputsRef.current[index - 1]?.focus()
-    } else if (e.key === 'ArrowRight' && index < otp.length - 1) {
-      e.preventDefault()
       otpInputsRef.current[index + 1]?.focus()
     }
   }
 
-  const handleResendOtp = async () => {
-    if (loginMethod === "phone") {
-      await handleSendOtp()
-    } else {
-      await handleEmailLogin()
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace') {
+      if (!otp[index] && index > 0) {
+        otpInputsRef.current[index - 1]?.focus()
+      }
     }
   }
 
@@ -135,22 +130,27 @@ export default function LoginPage() {
     }
     setError("")
     setVerifying(true)
+    
     try {
-      let res;
-      if (loginMethod === "phone") {
-        res = await axios.post("https://satark-india-backend.onrender.com/api/auth/verify-otp", { phone: phone.trim(), otp: otpStr })
-      } else {
-        res = await axios.post("https://satark-india-backend.onrender.com/api/auth/verify-email-otp", { email: emailInput.trim(), otp: otpStr })
-      }
+      if (confirmationResult) {
+        const result = await confirmationResult.confirm(otpStr)
+        const user = result.user
+        
+        // Call backend to sync user and get JWT
+        const res = await axios.post("https://satark-india-backend.onrender.com/api/auth/firebase-sync", {
+          uid: user.uid,
+          phoneNumber: user.phoneNumber
+        })
 
-      if (res.data?.token && res.data?.user) {
-        localStorage.setItem("satark_token", res.data.token)
-        localStorage.setItem("user", JSON.stringify(res.data.user))
-        router.push("/")
+        if (res.data?.token) {
+          localStorage.setItem("satark_token", res.data.token)
+          localStorage.setItem("user", JSON.stringify(res.data.user))
+          router.push("/")
+        }
       }
-    } catch (err: unknown) {
+    } catch (err: any) {
       console.error(err)
-      setError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || "Invalid OTP. Try again.")
+      setError("Invalid OTP. Try again.")
     } finally {
       setVerifying(false)
     }
@@ -163,13 +163,10 @@ export default function LoginPage() {
     setResendTimer(0)
   }
 
-  const handleGoogleLogin = () => {
-    setToastMessage("Google login coming soon! Use Phone or Email OTP for now.")
-    setTimeout(() => setToastMessage(""), 3000)
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 text-white flex flex-col items-center justify-center p-6 relative overflow-hidden">
+      <div id="recaptcha-container"></div>
+      
       <div className="absolute inset-0 opacity-10">
         <div className="absolute top-0 left-0 w-96 h-96 bg-blue-500 rounded-full blur-3xl animate-pulse" />
         <div className="absolute bottom-0 right-0 w-96 h-96 bg-indigo-500 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
@@ -195,8 +192,8 @@ export default function LoginPage() {
           </div>
           <p className="text-slate-400 text-sm mt-4">
             {step === 1 
-              ? "Enter your phone number or email to receive OTP" 
-              : `Enter the 6-digit OTP sent to your ${loginMethod === "phone" ? "phone" : "email"}`
+              ? "Login to access your secure dashboard" 
+              : `Enter the 6-digit OTP sent to your phone`
             }
           </p>
         </div>
@@ -227,10 +224,10 @@ export default function LoginPage() {
 
             <button
               onClick={handleSendOtp}
-              disabled={sending || !phone.trim() || phone.length !== 10}
+              disabled={sending || phone.length !== 10}
               className="w-full py-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 rounded-2xl font-bold text-lg shadow-xl shadow-blue-900/40 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {sending && loginMethod === "phone" ? (
+              {sending ? (
                 <>
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   <span>Sending OTP...</span>
@@ -249,31 +246,6 @@ export default function LoginPage() {
               <div className="flex-1 h-px bg-gradient-to-r from-transparent via-slate-700 to-transparent" />
             </div>
 
-            <div className="space-y-2">
-              <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <input
-                  type="email"
-                  placeholder="Email address"
-                  value={emailInput}
-                  onChange={(e) => setEmailInput(e.target.value)}
-                  className="w-full pl-12 pr-4 py-4 rounded-2xl bg-slate-800/60 border-2 border-slate-700 focus:border-blue-500 focus:bg-slate-800 outline-none transition-all text-white placeholder:text-slate-500 text-base font-medium shadow-lg shadow-black/10"
-                />
-              </div>
-              <button
-                onClick={handleEmailLogin}
-                disabled={sending && loginMethod === "email"}
-                className="w-full py-3.5 bg-slate-800/80 hover:bg-slate-800 border-2 border-slate-700 hover:border-slate-600 rounded-2xl font-semibold text-base transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-              >
-                {sending && loginMethod === "email" ? (
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : (
-                  <Mail className="w-4 h-4" />
-                )}
-                <span>Continue with Email</span>
-              </button>
-            </div>
-
             <button
               onClick={handleGoogleLogin}
               className="w-full py-3.5 bg-white/10 hover:bg-white/15 border-2 border-white/20 hover:border-white/30 rounded-2xl font-semibold text-base transition-all active:scale-[0.98] flex items-center justify-center gap-2 backdrop-blur-sm"
@@ -287,10 +259,13 @@ export default function LoginPage() {
               <span>Continue with Google</span>
             </button>
 
-            <div className="pt-4 text-center border-t border-slate-700">
-              <p className="text-xs text-slate-400 mb-2">Are you an admin?</p>
-              <Link href="/admin/login" className="text-sm font-semibold text-blue-400 hover:text-blue-300 transition-colors">
-                Admin Login →
+            <div className="pt-8 text-center border-t border-slate-800/50">
+              <Link 
+                href="/admin/login" 
+                className="inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-blue-400 transition-all group"
+              >
+                <LogIn className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                <span>Admin Portal Login</span>
               </Link>
             </div>
           </div>
@@ -311,19 +286,6 @@ export default function LoginPage() {
                     value={digit}
                     onChange={(e) => handleOtpChange(i, e.target.value)}
                     onKeyDown={(e) => handleOtpKeyDown(i, e)}
-                    onPaste={(e) => {
-                      e.preventDefault()
-                      const pastedData = e.clipboardData?.getData('text') || ''
-                      const digits = pastedData.replace(/\D/g, '').slice(0, otp.length)
-                      const newOtp = [...otp]
-                      for (let j = 0; j < digits.length; j++) {
-                        newOtp[i + j] = digits[j]
-                      }
-                      setOtp(newOtp)
-                      if (digits.length > 0) {
-                        setTimeout(() => otpInputsRef.current[Math.min(i + digits.length, otp.length - 1)]?.focus(), 0)
-                      }
-                    }}
                     className="w-12 h-14 rounded-xl bg-slate-800/80 border-2 border-slate-700 focus:border-blue-500 text-center text-2xl font-bold outline-none transition-all text-white shadow-lg shadow-black/20"
                   />
                 ))}
@@ -355,7 +317,7 @@ export default function LoginPage() {
             </button>
 
             <button
-              onClick={handleResendOtp}
+              onClick={handleSendOtp}
               disabled={resendTimer > 0 || sending}
               className={`w-full py-3 rounded-2xl font-semibold text-base transition-all flex items-center justify-center gap-2 ${
                 resendTimer > 0
@@ -364,15 +326,9 @@ export default function LoginPage() {
               }`}
             >
               {resendTimer > 0 ? (
-                <>
-                  <div className="w-4 h-4 rounded-full border-2 border-slate-600 border-t-blue-400 animate-spin" />
-                  <span>Resend OTP in {resendTimer}s</span>
-                </>
+                <span>Resend OTP in {resendTimer}s</span>
               ) : (
-                <>
-                  <Mail className="w-4 h-4" />
-                  <span>Resend OTP</span>
-                </>
+                <span>Resend OTP</span>
               )}
             </button>
 
@@ -380,7 +336,7 @@ export default function LoginPage() {
               onClick={goBack}
               className="w-full py-3 text-slate-400 hover:text-white text-sm font-medium transition-colors underline"
             >
-              Change {loginMethod === "phone" ? "Phone Number" : "Email Address"}
+              Change Phone Number
             </button>
           </div>
         )}
@@ -392,12 +348,6 @@ export default function LoginPage() {
           </p>
         </div>
       </div>
-
-      {toastMessage && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-6 py-3 bg-blue-600 text-white rounded-xl shadow-2xl animate-in slide-in-from-bottom-4">
-          <p className="text-sm font-medium">{toastMessage}</p>
-        </div>
-      )}
     </div>
   )
 }

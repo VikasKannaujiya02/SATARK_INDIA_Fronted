@@ -8,8 +8,6 @@ type Language = "en" | "hi"
 type Tab = "shield" | "investigator" | "offense" | "network" | "recovery" | "trust"
 
 interface AppContextType {
-  isDark: boolean
-  toggleDark: () => void
   language: Language
   setLanguage: (lang: Language) => void
   isElderly: boolean
@@ -33,30 +31,12 @@ export function useApp() {
 }
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [isDark, setIsDark] = useState(true)
   const [language, setLanguage] = useState<Language>("en")
   const [isElderly, setIsElderly] = useState(false)
   const [activeTab, setActiveTab] = useState<Tab>("shield")
   const [isAdmin, setIsAdmin] = useState(false)
   const [showNoInternet, setShowNoInternet] = useState(false)
   const [socket, setSocket] = useState<Socket | null>(null)
-
-  // Apply dark mode to HTML root
-  useEffect(() => {
-    if (typeof window === "undefined") return
-    
-    const applyTheme = () => {
-      const htmlElement = document.documentElement
-      if (isDark) {
-        htmlElement.classList.add("dark")
-      } else {
-        htmlElement.classList.remove("dark")
-      }
-    }
-
-    applyTheme()
-    localStorage.setItem("satark_darkMode", String(isDark))
-  }, [isDark])
 
   useEffect(() => {
     const newSocket = io("https://satark-india-backend.onrender.com")
@@ -72,16 +52,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  const toggleDark = useCallback(async () => {
-    const newVal = !isDark
-    setIsDark(newVal)
-    try {
-      await api.put("/api/user/settings", { darkMode: newVal })
-    } catch (e) {
-      console.log("Settings update skipped")
-    }
-  }, [isDark])
-
   const toggleElderly = useCallback(() => setIsElderly((p) => !p), [])
   const toggleAdmin = useCallback(() => setIsAdmin((p) => !p), [])
 
@@ -92,13 +62,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       try {
         const res = await api.get("/api/user/settings")
         if (res.data) {
-          if (res.data.darkMode !== undefined) setIsDark(res.data.darkMode)
           if (res.data.language) setLanguage(res.data.language)
         }
       } catch (e) {
         // Fallback to local storage
-        const savedDark = localStorage.getItem("satark_darkMode")
-        if (savedDark !== null) setIsDark(savedDark === "true")
         const savedLang = localStorage.getItem("satark_language") as Language
         if (savedLang) setLanguage(savedLang)
       }
@@ -129,7 +96,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   return (
     <AppContext.Provider
       value={{
-        isDark, toggleDark,
         language, setLanguage: handleSetLanguage,
         isElderly, toggleElderly,
         activeTab, setActiveTab,

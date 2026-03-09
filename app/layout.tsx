@@ -39,6 +39,8 @@ export const viewport: Viewport = {
   userScalable: false,
 }
 
+import { ThemeProvider } from '@/components/theme-provider'
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -47,10 +49,17 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} ${jetbrainsMono.variable} font-sans antialiased`}>
-        {children}
-        <Toaster position="top-center" />
-        <Analytics />
-        <script src="https://checkout.razorpay.com/v1/checkout.js" async></script>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+          <Toaster position="top-center" />
+          <Analytics />
+          <script src="https://checkout.razorpay.com/v1/checkout.js" async></script>
+        </ThemeProvider>
       </body>
     </html>
   )

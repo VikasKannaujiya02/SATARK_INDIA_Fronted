@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import dynamic from "next/dynamic"
 import { api } from "@/lib/api"
-import { Search, Image, CreditCard, MapPin, ChevronRight, Zap, Tag, Clock, QrCode, TrendingUp, Info, Share2, Globe, Phone, RefreshCcw } from "lucide-react"
+import { Search, Image, CreditCard, MapPin, ChevronRight, Zap, Tag, Clock, QrCode, TrendingUp, Info, Share2, Globe, Phone, RefreshCcw, KeyRound, AlertTriangle, FileCheck, Smartphone } from "lucide-react"
 import { useApp } from "./app-context"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
@@ -44,6 +44,8 @@ const STATE_COORDINATES: Record<string, [number, number]> = {
   "Mizoram": [23.1645, 92.9376],
   "Sikkim": [27.5330, 88.5122],
 }
+
+const COMMON_BREACHED_PASSWORDS = ["123456", "password", "admin123", "qwerty", "12345678", "12345", "123456789", "password123"]
 
 const FraudMap = dynamic(() => import("@/components/FraudMap").then((m) => ({ default: m.FraudMap })), { ssr: false })
 
@@ -102,6 +104,16 @@ export function TabInvestigator() {
   const [isSyncing, setIsSyncing] = useState(false)
   const screenshotInputRef = useRef<HTMLInputElement>(null)
 
+  // --- Password Scanner State ---
+  const [password, setPassword] = useState("")
+  const [passStrength, setPassStrength] = useState<{ score: number; label: string; color: string; breach: boolean } | null>(null)
+
+  // --- Deepfake Scanner State ---
+  const [deepfakeScore, setDeepfakeScore] = useState<number | null>(null)
+  const [deepfakeLoading, setDeepfakeLoading] = useState(false)
+  const [deepfakeError, setDeepfakeError] = useState("")
+  const deepfakeInputRef = useRef<HTMLInputElement>(null)
+
   useEffect(() => {
     // Load search history
     const history = localStorage.getItem("satark_search_history")
@@ -129,6 +141,54 @@ export function TabInvestigator() {
     }
     fetchTrends()
   }, [])
+
+  // --- Password Logic ---
+  const checkPassword = (val: string) => {
+    setPassword(val)
+    if (!val) { setPassStrength(null); return }
+
+    const isBreached = COMMON_BREACHED_PASSWORDS.includes(val.toLowerCase())
+    
+    // Entropy check
+    let score = 0
+    if (val.length > 8) score += 25
+    if (/[A-Z]/.test(val)) score += 25
+    if (/[0-9]/.test(val)) score += 25
+    if (/[^A-Za-z0-9]/.test(val)) score += 25
+
+    let label = "Weak"
+    let color = "text-destructive"
+    if (score >= 75) { label = "Strong"; color = "text-accent" }
+    else if (score >= 50) { label = "Medium"; color = "text-amber-500" }
+
+    setPassStrength({ score, label, color, breach: isBreached })
+  }
+
+  // --- Deepfake Logic ---
+  const handleDeepfakeFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !file.type.startsWith("image/")) return
+    setDeepfakeLoading(true)
+    setDeepfakeScore(null)
+    setDeepfakeError("")
+    try {
+      const reader = new FileReader()
+      const base64 = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve(String(reader.result))
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+      })
+      const res = await api.post("/api/scan-deepfake", { imageBase64: base64 }, { timeout: 20000 })
+      const score = res.data?.deepfake
+      setDeepfakeScore(typeof score === "number" ? score : null)
+      if (typeof score !== "number" && res.data?.error) setDeepfakeError(res.data.error)
+    } catch (err) {
+      setDeepfakeError("Unable to scan image")
+    } finally {
+      setDeepfakeLoading(false)
+      e.target.value = ""
+    }
+  }
 
   const handleSync = async () => {
     setIsSyncing(true)
@@ -351,6 +411,115 @@ export function TabInvestigator() {
           </p>
         </div>
       )}
+
+      {/* Advanced Scanners Section (Moved from other tabs) */}
+      <div className="grid grid-cols-1 gap-4">
+        {/* Functional Password Breach Scanner */}
+        <div className="rounded-3xl bg-slate-900 border border-slate-800 p-5 space-y-4 shadow-xl">
+          <div className="flex items-center gap-2">
+            <KeyRound className="w-5 h-5 text-primary" />
+            <h3 className="font-bold text-white text-sm">{t("Database Password Scanner", "डेटाबेस पासवर्ड स्कैनर")}</h3>
+          </div>
+          <div className="relative">
+            <input 
+              type="password"
+              placeholder={t("Type password to check...", "जांचने के लिए पासवर्ड लिखें...")}
+              value={password}
+              onChange={(e) => checkPassword(e.target.value)}
+              className="w-full bg-slate-800 border border-slate-700 rounded-2xl px-4 py-3 text-white text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+            {passStrength && (
+              <div className="mt-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                {passStrength.breach ? (
+                  <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/30 flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-destructive" />
+                    <p className="text-destructive font-bold text-[10px] uppercase tracking-wider">
+                      {t("CRITICAL: Password found in known data breaches!", "महत्वपूर्ण: पासवर्ड डेटा ब्रीच में पाया गया!")}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className={cn("text-[10px] font-bold uppercase tracking-widest", passStrength.color)}>
+                        {t(`Strength: ${passStrength.label}`, `शक्ति: ${passStrength.label}`)}
+                      </span>
+                      <span className="text-slate-500 text-[9px] font-mono">256-bit Entropy</span>
+                    </div>
+                    <div className="w-full h-1 bg-slate-800 rounded-full overflow-hidden">
+                      <div className={cn("h-full transition-all duration-500", passStrength.score === 100 ? "bg-accent" : passStrength.score >= 50 ? "bg-amber-500" : "bg-destructive")} 
+                           style={{ width: `${passStrength.score}%` }} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Deepfake Scanner Card */}
+        <div className="rounded-3xl bg-white dark:bg-card border border-slate-100 dark:border-border shadow-[0_4px_20px_rgba(0,0,0,0.03)] overflow-hidden">
+          <div className="p-5 flex items-center gap-3 mb-3">
+            <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-blue-100 dark:bg-blue-900/50">
+              <Smartphone className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <h3 className={cn("font-bold text-foreground", isElderly ? "text-base" : "text-sm")}>
+                {t("AI Deepfake Scanner", "AI डीपफेक स्कैनर")}
+              </h3>
+              <p className={cn("text-muted-foreground", isElderly ? "text-xs" : "text-[10px]")}>
+                {t("Detect AI-generated or deepfake images", "AI जनित या डीपफेक छवियों का पता लगाएं")}
+              </p>
+            </div>
+          </div>
+          <div className="p-5 flex flex-col gap-3">
+            <input
+              ref={deepfakeInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleDeepfakeFileChange}
+            />
+            <button
+              type="button"
+              onClick={() => deepfakeInputRef.current?.click()}
+              disabled={deepfakeLoading}
+              className={cn(
+                "w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl font-semibold text-xs transition-all active:scale-[0.97]",
+                deepfakeLoading
+                  ? "bg-secondary text-muted-foreground cursor-not-allowed"
+                  : "bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 hover:bg-blue-200/50 dark:hover:bg-blue-900/70"
+              )}
+            >
+              {deepfakeLoading ? (
+                <>
+                  <div className="w-3 h-3 border-2 border-blue-400/30 border-t-blue-600 rounded-full animate-spin" />
+                  <span>{t("Scanning...", "स्कैन हो रहा है...")}</span>
+                </>
+              ) : (
+                <>
+                  <FileCheck className="w-4 h-4" />
+                  <span>{t("Select Image to Scan", "स्कैन के लिए छवि चुनें")}</span>
+                </>
+              )}
+            </button>
+            {deepfakeScore !== null && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+                <span className={cn("font-medium text-foreground", isElderly ? "text-xs" : "text-[10px]")}>
+                  {t("AI/Deepfake probability", "AI/डीपफेक संभावना")}:{" "}
+                  <span className="font-bold text-blue-600 dark:text-blue-400">
+                    {(deepfakeScore * 100).toFixed(1)}%
+                  </span>
+                </span>
+              </div>
+            )}
+            {deepfakeError && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-destructive/10 border border-destructive/20">
+                <span className="text-destructive font-medium text-[10px]">{deepfakeError}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Recent Searches */}
       {recentSearches.length > 0 && (

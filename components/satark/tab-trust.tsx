@@ -35,6 +35,8 @@ import {
   Camera,
   LogOut,
   RefreshCcw,
+  HelpCircle,
+  MessageCircle,
 } from "lucide-react"
 import { useApp } from "./app-context"
 import { Switch } from "@/components/ui/switch"
@@ -42,12 +44,15 @@ import { cn } from "@/lib/utils"
 import toast from "react-hot-toast"
 import Link from "next/link"
 
+import { useTheme } from "next-themes"
+
 const USER_PHONE_KEY = "satark_user_phone"
 const USER_NAME_KEY = "satark_user_name"
 const USER_AVATAR_KEY = "satark_user_avatar"
 
 export function TabTrust() {
-  const { t, isElderly, isDark, toggleDark, language, setLanguage } = useApp()
+  const { t, isElderly, language, setLanguage } = useApp()
+  const { theme, setTheme } = useTheme()
   const [privacyScreen, setPrivacyScreen] = useState(false)
   const [cacheCleared, setCacheCleared] = useState(false)
   const [rateClicked, setRateClicked] = useState(false)
@@ -68,13 +73,6 @@ export function TabTrust() {
   // System State
   const [appVersion, setAppVersion] = useState("1.0.0")
   const [storageUsed, setStorageUsed] = useState("0MB")
-
-  // Admin State
-  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false)
-  const [adminPassword, setAdminPassword] = useState("")
-  const [adminTab, setAdminTab] = useState<"health" | "threats" | "controls">("health")
-  const [maintenanceMode, setMaintenanceMode] = useState(false)
-  const [strictRateLimit, setStrictRateLimit] = useState(true)
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -256,17 +254,6 @@ export function TabTrust() {
     window.location.href = "/login"
   }
 
-  const handleAdminLogin = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (adminPassword === "satarkadmin") {
-      setIsAdminLoggedIn(true)
-      toast.success(t("Admin Login Successful", "एडमिन लॉगिन सफल"))
-    } else {
-      toast.error(t("Invalid Password", "गलत पासवर्ड"))
-    }
-    setAdminPassword("")
-  }
-
   if (isMaintenance) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center space-y-6">
@@ -379,6 +366,40 @@ export function TabTrust() {
         <h3 className={cn("font-bold text-muted-foreground uppercase tracking-wider px-1 mb-1", isElderly ? "text-xs" : "text-[10px]")}>
           {t("PREFERENCES", "प्राथमिकताएं")}
         </h3>
+        <div className="flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-card border border-slate-100 dark:border-border shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-secondary shrink-0">
+              {theme === "dark" ? (
+                <Moon className={cn("text-muted-foreground", isElderly ? "w-5 h-5" : "w-4 h-4")} />
+              ) : (
+                <Sun className={cn("text-muted-foreground", isElderly ? "w-5 h-5" : "w-4 h-4")} />
+              )}
+            </div>
+            <div>
+              <p className={cn("font-medium text-foreground", isElderly ? "text-sm" : "text-xs")}>
+                {t("Appearance", "दिखावट")}
+              </p>
+              <p className={cn("text-muted-foreground", isElderly ? "text-[11px]" : "text-[9px]")}>
+                {theme === "dark" ? t("Dark Mode Active", "डार्क मोड सक्रिय") : t("Light Mode Active", "लाइट मोड सक्रिय")}
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-1 bg-secondary/50 p-1 rounded-xl border border-border">
+            <button 
+              onClick={() => setTheme("light")}
+              className={cn("p-1.5 rounded-lg transition-all", theme === "light" ? "bg-white dark:bg-card text-amber-500 shadow-sm" : "text-muted-foreground hover:text-foreground")}
+            >
+              <Sun className="w-4 h-4" />
+            </button>
+            <button 
+              onClick={() => setTheme("dark")}
+              className={cn("p-1.5 rounded-lg transition-all", theme === "dark" ? "bg-white dark:bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground")}
+            >
+              <Moon className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
         <div className="flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-card border border-slate-100 dark:border-border shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
           <div className="flex items-center gap-3">
             <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-secondary shrink-0">
@@ -559,6 +580,44 @@ export function TabTrust() {
       {/* Legal Section */}
       <div className="flex flex-col gap-1.5">
         <h3 className={cn("font-bold text-muted-foreground uppercase tracking-wider px-1 mb-1", isElderly ? "text-xs" : "text-[10px]")}>
+          {t("HELP & SUPPORT", "सहायता और समर्थन")}
+        </h3>
+
+        <button className="flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-card border border-slate-100 dark:border-border shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:bg-secondary/50 transition-all">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-secondary shrink-0">
+              <HelpCircle className={cn("text-muted-foreground", isElderly ? "w-5 h-5" : "w-4 h-4")} />
+            </div>
+            <div>
+              <p className={cn("font-medium text-foreground", isElderly ? "text-sm" : "text-xs")}>
+                {t("Frequently Asked Questions", "अक्सर पूछे जाने वाले प्रश्न")}
+              </p>
+              <p className={cn("text-muted-foreground", isElderly ? "text-[11px]" : "text-[9px]")}>
+                {t("Find answers to common issues", "सामान्य समस्याओं के उत्तर खोजें")}
+              </p>
+            </div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-muted-foreground/50" />
+        </button>
+
+        <button className="flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-card border border-slate-100 dark:border-border shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:bg-secondary/50 transition-all">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-secondary shrink-0">
+              <MessageCircle className={cn("text-muted-foreground", isElderly ? "w-5 h-5" : "w-4 h-4")} />
+            </div>
+            <div>
+              <p className={cn("font-medium text-foreground", isElderly ? "text-sm" : "text-xs")}>
+                {t("Contact Support", "सहायता से संपर्क करें")}
+              </p>
+              <p className={cn("text-muted-foreground", isElderly ? "text-[11px]" : "text-[9px]")}>
+                {t("Get help from our security team", "हमारी सुरक्षा टीम से सहायता प्राप्त करें")}
+              </p>
+            </div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-muted-foreground/50" />
+        </button>
+
+        <h3 className={cn("font-bold text-muted-foreground uppercase tracking-wider px-1 mb-1 mt-2", isElderly ? "text-xs" : "text-[10px]")}>
           {t("LEGAL", "कानूनी")}
         </h3>
 
@@ -602,143 +661,6 @@ export function TabTrust() {
             </span>
           </button>
         </div>
-      </div>
-
-      {/* 👑 ADMIN DASHBOARD SECTION */}
-      <div className="flex flex-col gap-1.5">
-        <h3 className={cn("font-bold text-muted-foreground uppercase tracking-wider px-1 mb-1", isElderly ? "text-xs" : "text-[10px]")}>
-          {t("ADMINISTRATION", "प्रशासन")}
-        </h3>
-
-        {!isAdminLoggedIn ? (
-          <form onSubmit={handleAdminLogin} className="rounded-3xl bg-slate-900 border border-slate-800 p-5 shadow-xl">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20">
-                <Terminal className="w-5 h-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-white font-bold text-sm">Admin Access</p>
-                <p className="text-slate-500 text-[10px]">Restricted to Satark Officials</p>
-              </div>
-            </div>
-            <div className="space-y-3">
-              <input 
-                type="password"
-                placeholder="Enter Admin Password"
-                value={adminPassword}
-                onChange={e => setAdminPassword(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-              />
-              <button type="submit" className="w-full py-3 bg-primary text-slate-950 font-bold rounded-xl hover:bg-primary/90 transition-all">
-                Login to Dashboard
-              </button>
-            </div>
-          </form>
-        ) : (
-          <div className="rounded-3xl bg-slate-900 border border-slate-800 overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
-            {/* Admin Header */}
-            <div className="bg-slate-800/50 p-4 border-b border-slate-700 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-white font-bold text-xs uppercase tracking-widest">Admin Dashboard</span>
-              </div>
-              <button onClick={() => setIsAdminLoggedIn(false)} className="p-1.5 rounded-lg hover:bg-destructive/10 text-destructive transition-colors">
-                <LogOut className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Admin Tabs */}
-            <div className="flex border-b border-slate-700 bg-slate-800/30">
-              {[
-                { id: "health", icon: Activity, label: "Health" },
-                { id: "threats", icon: Zap, label: "Threats" },
-                { id: "controls", icon: Shield, label: "Controls" }
-              ].map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => setAdminTab(tab.id as any)}
-                  className={cn(
-                    "flex-1 flex items-center justify-center gap-2 py-3 text-[10px] font-bold uppercase transition-all",
-                    adminTab === tab.id ? "text-primary border-b-2 border-primary bg-primary/5" : "text-slate-500 hover:text-slate-300"
-                  )}
-                >
-                  <tab.icon className="w-3.5 h-3.5" />
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Admin Content */}
-            <div className="p-5">
-              {adminTab === "health" && (
-                <div className="space-y-4 animate-in fade-in duration-300">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-slate-800/50 rounded-2xl p-4 border border-slate-700">
-                      <p className="text-slate-500 text-[9px] font-mono mb-1">System Uptime</p>
-                      <p className="text-white font-bold text-lg">99.98%</p>
-                    </div>
-                    <div className="bg-slate-800/50 rounded-2xl p-4 border border-slate-700">
-                      <p className="text-slate-500 text-[9px] font-mono mb-1">API Latency</p>
-                      <p className="text-emerald-500 font-bold text-lg">42ms</p>
-                    </div>
-                  </div>
-                  <div className="p-4 rounded-2xl bg-slate-800/30 border border-slate-700 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <RefreshCcw className="w-4 h-4 text-primary animate-spin-slow" />
-                      <span className="text-white text-xs">Auto-scaling Active</span>
-                    </div>
-                    <span className="text-slate-500 text-[10px] font-mono">NODE_IN_04</span>
-                  </div>
-                </div>
-              )}
-
-              {adminTab === "threats" && (
-                <div className="space-y-4 animate-in fade-in duration-300">
-                  <div className="p-4 rounded-2xl bg-slate-800/50 border border-slate-700">
-                    <p className="text-slate-500 text-[9px] font-mono mb-3">Live Threat Intel (Masked)</p>
-                    <div className="space-y-3">
-                      {[
-                        { id: "USR_***92A", score: "92%", status: "Flagged" },
-                        { id: "USR_***44B", score: "14%", status: "Safe" },
-                        { id: "USR_***71C", score: "88%", status: "Flagged" }
-                      ].map(row => (
-                        <div key={row.id} className="flex items-center justify-between text-[11px] font-mono">
-                          <span className="text-white/70">{row.id}</span>
-                          <span className="text-primary font-bold">{row.score}</span>
-                          <span className={cn(row.status === "Flagged" ? "text-destructive" : "text-emerald-500")}>{row.status}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="bg-primary/10 border border-primary/20 rounded-2xl p-4 flex items-center justify-between">
-                    <span className="text-primary font-bold text-xs uppercase">Total Scams Reported</span>
-                    <span className="text-white font-black text-xl">1,245</span>
-                  </div>
-                </div>
-              )}
-
-              {adminTab === "controls" && (
-                <div className="space-y-3 animate-in fade-in duration-300">
-                  <div className="flex items-center justify-between p-4 bg-slate-800/50 rounded-2xl border border-slate-700">
-                    <div className="flex items-center gap-3">
-                      <Power className="w-4 h-4 text-slate-400" />
-                      <span className="text-white text-xs">Maintenance Mode</span>
-                    </div>
-                    <Switch checked={maintenanceMode} onCheckedChange={setMaintenanceMode} />
-                  </div>
-                  <div className="flex items-center justify-between p-4 bg-slate-800/50 rounded-2xl border border-slate-700">
-                    <div className="flex items-center gap-3">
-                      <Shield className="w-4 h-4 text-slate-400" />
-                      <span className="text-white text-xs">Strict Rate Limiting</span>
-                    </div>
-                    <Switch checked={strictRateLimit} onCheckedChange={setStrictRateLimit} />
-                  </div>
-                  <p className="text-[9px] text-slate-600 italic px-2">Changes are applied globally to all production clusters immediately.</p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   )
