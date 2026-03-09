@@ -32,6 +32,10 @@ export default function LoginPage() {
   }, [resendTimer])
 
   const setupRecaptcha = () => {
+    if (!auth) {
+      toast.error("Authentication service not initialized");
+      return;
+    }
     if (!(window as any).recaptchaVerifier) {
       (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
         'size': 'invisible',
@@ -43,6 +47,10 @@ export default function LoginPage() {
   }
 
   const handleSendOtp = async () => {
+    if (!auth) {
+      toast.error("Authentication service not initialized");
+      return;
+    }
     if (!phone.trim() || phone.length !== 10) {
       setError("Please enter a valid 10-digit phone number")
       return
@@ -77,6 +85,10 @@ export default function LoginPage() {
   }
 
   const handleGoogleLogin = async () => {
+    if (!auth) {
+      toast.error("Authentication service not initialized");
+      return;
+    }
     try {
       const result = await signInWithPopup(auth, googleProvider)
       const user = result.user

@@ -1,4 +1,4 @@
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, PhoneAuthProvider } from "firebase/auth";
 
 const firebaseConfig = {
@@ -10,7 +10,11 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
+// Initialize Firebase only if we have an API key and it's not already initialized
+const app = (typeof window !== 'undefined' && firebaseConfig.apiKey) 
+  ? (getApps().length === 0 ? initializeApp(firebaseConfig) : getApp())
+  : null;
+
+export const auth = app ? getAuth(app) : null as any;
 export const googleProvider = new GoogleAuthProvider();
-export const phoneProvider = new PhoneAuthProvider(auth);
+export const phoneProvider = app ? new PhoneAuthProvider(auth) : null as any;
