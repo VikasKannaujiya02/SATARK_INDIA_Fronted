@@ -26,7 +26,7 @@ function AppContent() {
   const [isAuthorized, setIsAuthorized] = useState(false)
   const [biometricLocked, setBiometricLocked] = useState(false)
 
-  useEffect(() => {
+ useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         setIsAuthorized(true)
