@@ -90,27 +90,40 @@ export default function LoginPage() {
       return;
     }
     try {
-      const result = await signInWithPopup(auth, googleProvider)
-      const user = result.user
-      
-      // Call backend to sync user and get JWT
-      const res = await axios.post("https://satark-india-backend.onrender.com/api/auth/firebase-sync", {
-        uid: user.uid,
-        email: user.email,
-        name: user.displayName,
-        photoURL: user.photoURL
-      })
+      const result = await signInWithPopup(auth, googleProvider);
+      toast.success("Login Successful!");
 
-      if (res.data?.token) {
-        localStorage.setItem("satark_token", res.data.token)
-        localStorage.setItem("user", JSON.stringify(res.data.user))
-        router.push("/")
-      }
+      const user = result.user;
+
+      // Non-blocking backend sync
+      (async () => {
+        try {
+          const res = await axios.post(
+            `${process.env.NEXT_PUBLIC_API_URL || 'https://satark-india-backend.onrender.com'}/api/auth/firebase-sync`,
+            {
+              uid: user.uid,
+              email: user.email,
+              name: user.displayName,
+              photoURL: user.photoURL,
+            }
+          );
+
+          if (res.data?.token) {
+            localStorage.setItem("satark_token", res.data.token);
+            localStorage.setItem("user", JSON.stringify(res.data.user));
+          }
+        } catch (syncError) {
+          console.error("Backend sync failed, proceeding with login:", syncError);
+        }
+      })();
+
+      router.push("/");
+
     } catch (err: any) {
-      console.error(err)
-      toast.error("Google login failed")
+      console.error(err);
+      toast.error("Google login failed");
     }
-  }
+  };
 
   const handleOtpChange = (index: number, value: string) => {
     const cleanedValue = value.replace(/\D/g, '')
@@ -146,19 +159,27 @@ export default function LoginPage() {
     try {
       if (confirmationResult) {
         const result = await confirmationResult.confirm(otpStr)
+        toast.success("Verification Successful!");
         const user = result.user
         
-        // Call backend to sync user and get JWT
-        const res = await axios.post("https://satark-india-backend.onrender.com/api/auth/firebase-sync", {
-          uid: user.uid,
-          phoneNumber: user.phoneNumber
-        })
+        // Non-blocking backend sync
+        (async () => {
+          try {
+            const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'https://satark-india-backend.onrender.com'}/api/auth/firebase-sync`, {
+              uid: user.uid,
+              phoneNumber: user.phoneNumber
+            });
 
-        if (res.data?.token) {
-          localStorage.setItem("satark_token", res.data.token)
-          localStorage.setItem("user", JSON.stringify(res.data.user))
-          router.push("/")
-        }
+            if (res.data?.token) {
+              localStorage.setItem("satark_token", res.data.token);
+              localStorage.setItem("user", JSON.stringify(res.data.user));
+            }
+          } catch (syncError) {
+            console.error("Backend sync failed, proceeding with login:", syncError);
+          }
+        })();
+
+        router.push("/");
       }
     } catch (err: any) {
       console.error(err)
