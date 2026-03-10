@@ -4,6 +4,8 @@ import { useState, useLayoutEffect, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { api } from "@/lib/api"
 import { AppProvider, useApp } from "@/components/satark/app-context"
+import { auth } from "@/lib/firebase"
+import { onAuthStateChanged } from "firebase/auth"
 import { GlobalHeader } from "@/components/satark/global-header"
 import { BottomNav } from "@/components/satark/bottom-nav"
 import { TabShield } from "@/components/satark/tab-shield"
@@ -24,15 +26,16 @@ function AppContent() {
   const [isAuthorized, setIsAuthorized] = useState(false)
   const [biometricLocked, setBiometricLocked] = useState(false)
 
-  useLayoutEffect(() => {
-    const token = localStorage.getItem("satark_token")
-    if (!token) {
-      localStorage.removeItem("user")
-      router.replace("/login")
-      return
-    }
-    setIsAuthorized(true)
-  }, [router])
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        router.replace("/login")
+      } else {
+        setIsAuthorized(true)
+      }
+    });
+    return () => unsubscribe();
+  }, [router]);
 
   useEffect(() => {
     if (!isAuthorized || typeof window === "undefined") return
