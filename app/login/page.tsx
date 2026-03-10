@@ -106,27 +106,25 @@ export default function LoginPage() {
 
       const user = result.user;
 
-      // Non-blocking backend sync
-      (async () => {
-        try {
-          const res = await axios.post(
-            `${process.env.NEXT_PUBLIC_API_URL || 'https://satark-india-backend.onrender.com'}/api/auth/firebase-sync`,
-            {
-              uid: user.uid,
-              email: user.email,
-              name: user.displayName,
-              photoURL: user.photoURL,
-            }
-          );
-
-          if (res.data?.token) {
-            localStorage.setItem("satark_token", res.data.token);
-            localStorage.setItem("user", JSON.stringify(res.data.user));
+      // Blocking backend sync - wait for token before navigation
+      try {
+        const res = await axios.post(
+          `${process.env.NEXT_PUBLIC_API_URL || 'https://satark-india-backend.onrender.com'}/api/auth/firebase-sync`,
+          {
+            uid: user.uid,
+            email: user.email,
+            name: user.displayName,
+            photoURL: user.photoURL,
           }
-        } catch (syncError) {
-          console.error("Backend sync failed, proceeding with login:", syncError);
+        );
+
+        if (res.data?.token) {
+          localStorage.setItem("satark_token", res.data.token);
+          localStorage.setItem("user", JSON.stringify(res.data.user));
         }
-      })();
+      } catch (syncError) {
+        console.error("Backend sync failed, proceeding with login:", syncError);
+      }
 
       router.push("/");
 
@@ -173,22 +171,20 @@ export default function LoginPage() {
         toast.success("Verification Successful!");
         const user = result.user
         
-        // Non-blocking backend sync
-        (async () => {
-          try {
-            const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'https://satark-india-backend.onrender.com'}/api/auth/firebase-sync`, {
-              uid: user.uid,
-              phoneNumber: user.phoneNumber
-            });
+        // Blocking backend sync - wait for token before navigation
+        try {
+          const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL || 'https://satark-india-backend.onrender.com'}/api/auth/firebase-sync`, {
+            uid: user.uid,
+            phoneNumber: user.phoneNumber
+          });
 
-            if (res.data?.token) {
-              localStorage.setItem("satark_token", res.data.token);
-              localStorage.setItem("user", JSON.stringify(res.data.user));
-            }
-          } catch (syncError) {
-            console.error("Backend sync failed, proceeding with login:", syncError);
+          if (res.data?.token) {
+            localStorage.setItem("satark_token", res.data.token);
+            localStorage.setItem("user", JSON.stringify(res.data.user));
           }
-        })();
+        } catch (syncError) {
+          console.error("Backend sync failed, proceeding with login:", syncError);
+        }
 
         router.push("/");
       }
