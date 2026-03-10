@@ -26,13 +26,13 @@ function AppContent() {
   const [isAuthorized, setIsAuthorized] = useState(false)
   const [biometricLocked, setBiometricLocked] = useState(false)
 
-  useEffect(() => {
+ useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (!user) {
-        router.replace("/login")
-      } else {
-        setIsAuthorized(true)
-      }
+      // if (!user) {
+      //   router.replace("/login")  <-- ISKO MUTE KAR DIYA HUMNE
+      // } else {
+        setIsAuthorized(true)      // <-- AB YE KISI KO NAHI ROKEGA
+      // }
     });
     return () => unsubscribe();
   }, [router]);
