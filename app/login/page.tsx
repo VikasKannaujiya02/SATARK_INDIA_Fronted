@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import { Shield, Mail, Lock, CheckCircle2, Smartphone, LogIn } from "lucide-react"
 import Link from "next/link"
 import { auth, googleProvider } from "@/lib/firebase"
-import { signInWithPopup, RecaptchaVerifier, signInWithPhoneNumber, onAuthStateChanged } from "firebase/auth";
+import { signInWithPopup, RecaptchaVerifier, signInWithPhoneNumber, onAuthStateChanged, GoogleAuthProvider } from "firebase/auth";
 import toast from "react-hot-toast"
 
 export default function LoginPage() {
@@ -30,7 +30,6 @@ export default function LoginPage() {
         router.push('/');
       }
     });
-
     return () => unsubscribe();
   }, [router]);
 
@@ -100,7 +99,8 @@ export default function LoginPage() {
       return;
     }
     try {
-      const result = await signInWithPopup(auth, googleProvider);
+      // Use new GoogleAuthProvider() as requested to fix silent refresh/reload
+      const result = await signInWithPopup(auth, new GoogleAuthProvider());
       toast.success("Login Successful!");
 
       const user = result.user;
@@ -266,6 +266,7 @@ export default function LoginPage() {
             )}
 
             <button
+              type="button"
               onClick={handleSendOtp}
               disabled={sending || phone.length !== 10}
               className="w-full py-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 rounded-2xl font-bold text-lg shadow-xl shadow-blue-900/40 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
@@ -290,6 +291,7 @@ export default function LoginPage() {
             </div>
 
             <button
+              type="button"
               onClick={handleGoogleLogin}
               className="w-full py-3.5 bg-white/10 hover:bg-white/15 border-2 border-white/20 hover:border-white/30 rounded-2xl font-semibold text-base transition-all active:scale-[0.98] flex items-center justify-center gap-2 backdrop-blur-sm"
             >
@@ -342,6 +344,7 @@ export default function LoginPage() {
             )}
 
             <button
+              type="button"
               onClick={handleVerifyOtp}
               disabled={verifying || otp.join("").length !== 6}
               className="w-full py-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 rounded-2xl font-bold text-lg shadow-xl shadow-blue-900/40 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
@@ -360,6 +363,7 @@ export default function LoginPage() {
             </button>
 
             <button
+              type="button"
               onClick={handleSendOtp}
               disabled={resendTimer > 0 || sending}
               className={`w-full py-3 rounded-2xl font-semibold text-base transition-all flex items-center justify-center gap-2 ${
