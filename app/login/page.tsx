@@ -34,7 +34,7 @@ export default function LoginPage() {
 
       return () => unsubscribe();
     }
-  }, [auth, router]);
+  }, []);
 
   // Resend OTP timer countdown
   useEffect(() => {
