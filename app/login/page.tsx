@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import { Shield, Mail, Lock, CheckCircle2, Smartphone, LogIn } from "lucide-react"
 import Link from "next/link"
 import { auth, googleProvider } from "@/lib/firebase"
-import { signInWithPopup, RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth"
+import { signInWithPopup, RecaptchaVerifier, signInWithPhoneNumber, onAuthStateChanged } from "firebase/auth";
 import toast from "react-hot-toast"
 
 export default function LoginPage() {
@@ -23,6 +23,18 @@ export default function LoginPage() {
   
   const otpInputsRef = useRef<(HTMLInputElement | null)[]>([])
   const router = useRouter()
+
+  useEffect(() => {
+    if (auth) {
+      const unsubscribe = onAuthStateChanged(auth, (user) => {
+        if (user) {
+          router.push('/');
+        }
+      });
+
+      return () => unsubscribe();
+    }
+  }, [auth, router]);
 
   // Resend OTP timer countdown
   useEffect(() => {
