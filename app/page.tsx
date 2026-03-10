@@ -28,11 +28,15 @@ function AppContent() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (!user) {
-        router.replace("/login")
-      } else {
+      if (user) {
         setIsAuthorized(true)
       }
+      // Neutralized to stop auto-redirect loops
+      // if (!user) {
+      //   router.replace("/login")
+      // } else {
+      //   setIsAuthorized(true)
+      // }
     });
     return () => unsubscribe();
   }, [router]);

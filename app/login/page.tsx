@@ -26,9 +26,10 @@ export default function LoginPage() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        router.replace('/');
-      }
+      // Neutralized to stop auto-redirect loops
+      // if (user) {
+      //   router.replace('/');
+      // }
     });
     return () => unsubscribe();
   }, []);
