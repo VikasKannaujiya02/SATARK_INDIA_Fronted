@@ -1,4 +1,4 @@
-﻿﻿"use client"
+﻿"use client"
 
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from "react"
 import { io, Socket } from "socket.io-client"
@@ -30,6 +30,8 @@ export function useApp() {
   return ctx
 }
 
+const SOCKET_URL = "https://satark-india-backend.onrender.com";
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [language, setLanguage] = useState<Language>("en")
   const [isElderly, setIsElderly] = useState(false)
@@ -38,24 +40,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [showNoInternet, setShowNoInternet] = useState(false)
   const [socket, setSocket] = useState<Socket | null>(null)
 
-  const socketRef = useRef<Socket | null>(null);
-
   useEffect(() => {
-    if (!socketRef.current) {
-      socketRef.current = io("https://satark-india-backend.onrender.com");
-      setSocket(socketRef.current);
+    const newSocket = io(SOCKET_URL, {
+      reconnectionAttempts: 5,
+      timeout: 10000,
+    });
+    
+    setSocket(newSocket);
 
-      socketRef.current.on("receive_security_ping", (data) => {
-        const name = data.name || "Family Member";
-        window.dispatchEvent(new CustomEvent("satark_security_ping", { detail: data }));
-      });
-    }
+    newSocket.on("receive_security_ping", (data) => {
+      window.dispatchEvent(new CustomEvent("satark_security_ping", { detail: data }));
+    });
 
     return () => {
-      if (socketRef.current) {
-        socketRef.current.close();
-        socketRef.current = null;
-      }
+      newSocket.disconnect();
     };
   }, []);
 
