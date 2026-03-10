@@ -1,4 +1,4 @@
-﻿﻿"use client"
+﻿"use client"
 
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from "react"
 import { io, Socket } from "socket.io-client"
@@ -38,19 +38,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [showNoInternet, setShowNoInternet] = useState(false)
   const [socket, setSocket] = useState<Socket | null>(null)
 
-  useEffect(() => {
-    const newSocket = io("https://satark-india-backend.onrender.com")
-    setSocket(newSocket)
+  const socketRef = useRef<Socket | null>(null);
 
-    newSocket.on("receive_security_ping", (data) => {
-      const name = data.name || "Family Member"
-      window.dispatchEvent(new CustomEvent("satark_security_ping", { detail: data }))
-    })
+  useEffect(() => {
+    if (!socketRef.current) {
+      socketRef.current = io("https://satark-india-backend.onrender.com");
+      setSocket(socketRef.current);
+
+      socketRef.current.on("receive_security_ping", (data) => {
+        const name = data.name || "Family Member";
+        window.dispatchEvent(new CustomEvent("satark_security_ping", { detail: data }));
+      });
+    }
 
     return () => {
-      newSocket.close()
-    }
-  }, [])
+      if (socketRef.current) {
+        socketRef.current.close();
+        socketRef.current = null;
+      }
+    };
+  }, []);
 
   const toggleElderly = useCallback(() => setIsElderly((p) => !p), [])
   const toggleAdmin = useCallback(() => setIsAdmin((p) => !p), [])

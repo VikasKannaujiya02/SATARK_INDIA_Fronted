@@ -25,16 +25,14 @@ export default function LoginPage() {
   const router = useRouter()
 
   useEffect(() => {
-    if (auth) {
-      const unsubscribe = onAuthStateChanged(auth, (user) => {
-        if (user) {
-          router.push('/');
-        }
-      });
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        router.push('/');
+      }
+    });
 
-      return () => unsubscribe();
-    }
-  }, []);
+    return () => unsubscribe();
+  }, [router]);
 
   // Resend OTP timer countdown
   useEffect(() => {
